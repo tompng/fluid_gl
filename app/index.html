@@ -34,19 +34,6 @@ onload=function(){
   scene = new THREE.Scene();
   plane = new THREE.Mesh(planeGeometry, smokeShader());
   scene.add(plane);
-  wavescene = new THREE.Scene();
-
-  var objects=[];
-  for(var i=0;i<100;i++){
-    var shader=circleShader();
-    var obj={
-      mult: new THREE.Mesh(planeGeometry,shader.mult),
-      add: new THREE.Mesh(planeGeometry,shader.add)
-    };
-    wavescene.add(obj.mult,obj.add);
-    obj.mult.visible=obj.add.visible=false;
-    objects.push(obj);
-  }
 
   renderer = new THREE.WebGLRenderer();
   renderer.setClearColor(new THREE.Color(0x0000ff));
@@ -84,8 +71,6 @@ onload=function(){
   window.dtav=0;
   animate();
   function animate(){
-    var r=0.1;
-    objects.forEach(function(obj){obj.mult.visible=obj.add.visible=false;});
     var ps=[];if(mouse)ps.push(mouse);
     pointables.forEach(function(p){
       var data={
@@ -99,16 +84,13 @@ onload=function(){
       ps.push(data);
     })
     for(var i in ps){
-      var p=ps[i];
-      var obj=objects[i];
-      obj.mult.material.uniforms.center.value=obj.add.material.uniforms.center.value=new THREE.Vector4(2*p.x-1,2*p.y-1);
-      obj.mult.material.uniforms.radius.value=obj.add.material.uniforms.radius.value=r;
-      obj.mult.material.uniforms.value.value=new THREE.Vector4(0,0,1,0.95);
-      obj.add.material.uniforms.value.value=new THREE.Vector4(-16*p.vx,-16*p.vy,0,0.1*p.val);
-      obj.mult.visible=obj.add.visible=true;
+      var p = ps[i]
+      simulator.disturb({x: 2*p.x-1, y: 2*p.y-1}, {
+        vx: -16*p.vx,
+        vy: -16*p.vy,
+        a: p.val
+      })
     }
-    renderer.autoClear=false;
-    renderer.render(wavescene, camera, simulator.wave);
     for(var i=0;i<4;i++)simulator.calc();
     plane.material.uniforms.wave.value = simulator.wave.texture
     renderer.render(scene, camera);

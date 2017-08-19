@@ -3,9 +3,23 @@ function WaveSimulator(renderer, size, option) {
   if(!option)option = {}
   var camera = new THREE.Camera();
   var scene = new THREE.Scene();
+  var disturbScene = new THREE.Scene();
+  var disturbObjects = []
+  var planeGeometry = new THREE.PlaneBufferGeometry(2,2);
+  for(var i=0;i<100;i++){
+    var shader=circleShader();
+    var obj={
+      mult: new THREE.Mesh(planeGeometry,shader.mult),
+      add: new THREE.Mesh(planeGeometry,shader.add)
+    };
+    disturbScene.add(obj.mult,obj.add);
+    obj.mult.visible=obj.add.visible=false;
+    disturbObjects.push(obj);
+  }
+  var disturbIndex = 0
   camera.position.z = 1;
   gl = renderer.getContext();
-  var mesh = new THREE.Mesh(new THREE.PlaneBufferGeometry(2, 2));
+  var mesh = new THREE.Mesh(planeGeometry);
   scene.add(mesh);
   var wave0 = createRenderTarget(size,size,{type:THREE.FloatType,filter:THREE.LinearFilter});
   var wave1 = createRenderTarget(size,size,{type:THREE.FloatType,filter:THREE.LinearFilter});
@@ -90,7 +104,34 @@ function WaveSimulator(renderer, size, option) {
     store.shader.uniforms.texture.value = this.wave.texture || this.wave;
     renderer.render(store.scene, camera, store.target);
   }
+  this.disturb = function(position, option){
+    var obj = disturbObjects[disturbIndex++]
+    if(!obj)return
+    obj.mult.material.uniforms.center.value=obj.add.material.uniforms.center.value=new THREE.Vector4(position.x, position.y);
+    obj.mult.material.uniforms.radius.value=obj.add.material.uniforms.radius.value=option.r || 0.1;
+    var vmult = option.vmult || 0
+    var hmult = option.hmult || 1
+    var amult = option.amult || 0.95
+    obj.mult.material.uniforms.value.value=new THREE.Vector4(vmult, vmult, hmult, amult);
+    var vx = option.vx || 0
+    var vy = option.vy || 0
+    var h = option.h || 0
+    var a = option.a || 0
+    obj.add.material.uniforms.value.value=new THREE.Vector4((1-vmult)*vx, (1-vmult)*vy, (1-hmult)*h, (1-amult)*a)
+    obj.mult.visible=obj.add.visible=true;
+  }
   this.calc = function(){
+    if(disturbIndex){
+      var autoClearWas = renderer.autoClear
+      renderer.autoClear = false
+      renderer.render(disturbScene, camera, this.wave)
+      renderer.autoClear = autoClearWas
+      for(var i=0;i<this.disturbIndex;i++){
+        var obj = disturbObjects[i]
+        obj.add.visible = obj.mult.visible = false
+      }
+      disturbIndex = 0
+    }
     this.wave = wave0;
     wave0 = wave1;
     wave1 = this.wave;
@@ -284,6 +325,49 @@ WaveSimulator.waveAddShader = function(){
     blendDst: THREE.OneFactor
   });
 }
+
+function circleShader(){
+  let VERT = `
+  uniform vec2 center;
+  uniform float radius;
+  varying vec2 coord;
+  void main(){
+    gl_Position=vec4(center+radius*position.xy,0,1);
+    coord = position.xy;
+  }
+  `
+  let FRAG = `
+  varying vec2 coord;
+  uniform vec4 value;
+  void main(){
+    float r2=dot(coord,coord);
+    if(r2>1.0)discard;
+    float alpha=(1.0-r2)*(1.0-r2);
+    gl_FragColor = FRAGCOLOR;
+  }
+  `
+  return {
+    mult: new THREE.ShaderMaterial({
+      uniforms: {radius: {type: 'f'},center: {type: 'v2'},value: {type: 'v4'}},
+      vertexShader: VERT,
+      fragmentShader: FRAG.replace('FRAGCOLOR', '1.0-alpha*(1.0-value)'),
+      transparent: true,
+      depthTest: false,
+      blending: THREE.MultiplyBlending,
+    }),
+    add: new THREE.ShaderMaterial({
+      uniforms: {radius: {type: 'f'},center: {type: 'v2'},value: {type: 'v4'}},
+      vertexShader: VERT,
+      fragmentShader: FRAG.replace('FRAGCOLOR', 'alpha*value'),
+      transparent: true,
+      depthTest: false,
+      blending: THREE.CustomBlending,
+      blendSrc: THREE.OneFactor,
+      blendDst: THREE.OneFactor
+    })
+  }
+}
+
 
 module.exports = WaveSimulator
 WaveSimulator.THREE = THREE
