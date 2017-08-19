@@ -1,0 +1,19 @@
+{
+  "name": "poisson_gl",
+  "version": "0.0.1",
+  "main": "index.js",
+  "dependencies": {
+    "three": "^0.86.0"
+  },
+  "devDependencies": {
+    "webpack": "3.5.5",
+    "http-server": "0.10.0",
+    "poisson_gl" : "git://github.com/tompng/poisson_gl.git",
+    "concurrently": "3.5.0"
+  },
+  "scripts": {
+    "webpack": "webpack -w",
+    "server": "http-server -c0 app",
+    "start": "concurrently \"npm run server\" \"npm run webpack\""
+  }
+}

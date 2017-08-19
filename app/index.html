@@ -1,0 +1,184 @@
+<title>leapmotion smoke</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<script src="bundle.js"></script>
+<style>
+body{padding:0;margin:0;text-align:center;background:black;}
+canvas{width:100vmin !important;height:100vmin !important;}
+</style>
+<script>
+var SIZE=256;
+var pointables=[],hands=[];
+function leapInit(){
+  ws = new WebSocket("wss://127.0.0.1:6436/v4.json");
+  ws.onerror=function(){
+    ws2 = new WebSocket("ws://127.0.0.1:6437/v4.json");
+    ws2.onopen=ws.onopen;
+    ws2.onmessage=ws.onmessage;
+    ws2.onerror=function(){
+      alert('unable to connect to leapmotion');
+    }
+  }
+  ws.onopen = function(event){this.send(JSON.stringify({background: true, enableGestures: true}));};
+  ws.onmessage = function(event){
+    var obj = JSON.parse(event.data);
+    if(obj.id){
+      hands=obj.hands;
+      pointables=obj.pointables;
+    }
+  };
+}
+onload=function(){
+  leapInit();
+  var planeGeometry = new THREE.PlaneBufferGeometry(2,2);
+  camera = new THREE.Camera();
+  scene = new THREE.Scene();
+  plane = new THREE.Mesh(planeGeometry, smokeShader());
+  scene.add(plane);
+  wavescene = new THREE.Scene();
+
+  var objects=[];
+  for(var i=0;i<100;i++){
+    var shader=circleShader();
+    var obj={
+      mult: new THREE.Mesh(planeGeometry,shader.mult),
+      add: new THREE.Mesh(planeGeometry,shader.add)
+    };
+    wavescene.add(obj.mult,obj.add);
+    obj.mult.visible=obj.add.visible=false;
+    objects.push(obj);
+  }
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setClearColor(new THREE.Color(0x0000ff));
+  renderer.setSize(SIZE,SIZE);
+  document.body.appendChild(renderer.domElement);
+
+  var mouse = {x:-1,y:-1,vx:0,vy:0,val:0};
+  document.body.addEventListener('touchstart', function(e){e.preventDefault();return false});
+  document.body.addEventListener('touchmove', function(e){
+    var touch = e.touches[0];
+    mouse.down=true;
+    document.onmousemove({
+      pageX: touch.pageX,
+      pageY: touch.pageY,
+    });
+    return false;
+  })
+
+  document.onmousedown=function(){mouse.down=true;}
+  document.onmouseup=function(){mouse.down=false;}
+  document.onmousemove=function(e){
+    if(mouse.timer)clearTimeout(mouse.timer);
+    var w=innerWidth,h=innerHeight;
+    var s=Math.min(w,h);
+    var x = (e.pageX-(w-s)/2)/s;
+    var y = 1-(e.pageY-(h-s)/2)/s;
+    var vx=x-mouse.x,vy=y-mouse.y;
+    var vr=Math.sqrt(vx*vx+vy*vy);
+    if(vr>0.1){vx*=0.1/vr;vy*=0.1/vr;}
+    mouse = {x: x, y: y, vx: vx, vy: vy, down: mouse.down};
+    mouse.val = mouse.down?1:0;
+    mouse.timer = setTimeout(function(){mouse.vx=mouse.vy=mouse.val=0;mouse.timer=null},40);
+  }
+  simulator = new WaveSimulator(renderer, SIZE);
+  window.dtav=0;
+  animate();
+  function animate(){
+    var r=0.1;
+    objects.forEach(function(obj){obj.mult.visible=obj.add.visible=false;});
+    var ps=[];if(mouse)ps.push(mouse);
+    pointables.forEach(function(p){
+      var data={
+        x: 0.5+p.tipPosition[0]/400,
+        y: 0.5+(p.tipPosition[1]-250)/400,
+        vx: p.tipVelocity[0]/10000*4,
+        vy: p.tipVelocity[1]/10000*4,
+        val: p.tipPosition[2]<0?1:0
+      }
+      if(p.tool){data.vx*=0.25;data.vy*=0.25;}
+      ps.push(data);
+    })
+    for(var i in ps){
+      var p=ps[i];
+      var obj=objects[i];
+      obj.mult.material.uniforms.center.value=obj.add.material.uniforms.center.value=new THREE.Vector4(2*p.x-1,2*p.y-1);
+      obj.mult.material.uniforms.radius.value=obj.add.material.uniforms.radius.value=r;
+      obj.mult.material.uniforms.value.value=new THREE.Vector4(0,0,1,0.95);
+      obj.add.material.uniforms.value.value=new THREE.Vector4(-16*p.vx,-16*p.vy,0,0.1*p.val);
+      obj.mult.visible=obj.add.visible=true;
+    }
+    renderer.autoClear=false;
+    renderer.render(wavescene, camera, simulator.wave);
+    for(var i=0;i<4;i++)simulator.calc();
+    plane.material.uniforms.wave.value = simulator.wave.texture
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  }
+}
+
+function circleShader(){
+  return {
+    mult: new THREE.ShaderMaterial({
+      uniforms: {radius: {type: 'f'},center: {type: 'v2'},value: {type: 'v4'}},
+      vertexShader: WaveSimulator.shaderCode(arguments.callee, 'VERT'),
+      fragmentShader: WaveSimulator.shaderCode(arguments.callee, 'FRAG').replace('FRAGCOLOR', '1.0-alpha*(1.0-value)'),
+      transparent: true,
+      depthTest: false,
+      blending: THREE.MultiplyBlending,
+    }),
+    add: new THREE.ShaderMaterial({
+      uniforms: {radius: {type: 'f'},center: {type: 'v2'},value: {type: 'v4'}},
+      vertexShader: WaveSimulator.shaderCode(arguments.callee, 'VERT'),
+      fragmentShader: WaveSimulator.shaderCode(arguments.callee, 'FRAG').replace('FRAGCOLOR', 'alpha*value'),
+      transparent: true,
+      depthTest: false,
+      blending: THREE.CustomBlending,
+      blendSrc: THREE.OneFactor,
+      blendDst: THREE.OneFactor
+    })
+  }
+  /*VERT
+  uniform vec2 center;
+  uniform float radius;
+  varying vec2 coord;
+  void main(){
+    gl_Position=vec4(center+radius*position.xy,0,1);
+    coord = position.xy;
+  }
+  */
+  /*FRAG
+  varying vec2 coord;
+  uniform vec4 value;
+  void main(){
+    float r2=dot(coord,coord);
+    if(r2>1.0)discard;
+    float alpha=(1.0-r2)*(1.0-r2);
+    gl_FragColor = FRAGCOLOR;
+  }
+  */
+}
+
+function smokeShader(){
+  return new THREE.ShaderMaterial({
+    uniforms: {wave: {type: "t"}},
+    vertexShader: WaveSimulator.shaderCode(arguments.callee, 'VERT'),
+    fragmentShader: WaveSimulator.shaderCode(arguments.callee, 'FRAG'),
+  });
+  /*VERT
+  varying vec2 coord;
+  void main(){
+    coord=position.xy/2.0+vec2(0.5,0.5);
+    gl_Position=vec4(position,1);
+  }
+  */
+  /*FRAG
+  varying vec2 coord;
+  uniform sampler2D wave;
+  void main(){
+    vec4 uvha=texture2D(wave,coord);
+    gl_FragColor.rgb = uvha.a*vec3(2,1,0.5);
+    gl_FragColor.a = 1.0;
+  }
+  */
+}
+</script>
