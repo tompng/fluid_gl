@@ -117,27 +117,7 @@ onload=function(){
 }
 
 function circleShader(){
-  return {
-    mult: new THREE.ShaderMaterial({
-      uniforms: {radius: {type: 'f'},center: {type: 'v2'},value: {type: 'v4'}},
-      vertexShader: WaveSimulator.shaderCode(arguments.callee, 'VERT'),
-      fragmentShader: WaveSimulator.shaderCode(arguments.callee, 'FRAG').replace('FRAGCOLOR', '1.0-alpha*(1.0-value)'),
-      transparent: true,
-      depthTest: false,
-      blending: THREE.MultiplyBlending,
-    }),
-    add: new THREE.ShaderMaterial({
-      uniforms: {radius: {type: 'f'},center: {type: 'v2'},value: {type: 'v4'}},
-      vertexShader: WaveSimulator.shaderCode(arguments.callee, 'VERT'),
-      fragmentShader: WaveSimulator.shaderCode(arguments.callee, 'FRAG').replace('FRAGCOLOR', 'alpha*value'),
-      transparent: true,
-      depthTest: false,
-      blending: THREE.CustomBlending,
-      blendSrc: THREE.OneFactor,
-      blendDst: THREE.OneFactor
-    })
-  }
-  /*VERT
+  let VERT = `
   uniform vec2 center;
   uniform float radius;
   varying vec2 coord;
@@ -145,8 +125,8 @@ function circleShader(){
     gl_Position=vec4(center+radius*position.xy,0,1);
     coord = position.xy;
   }
-  */
-  /*FRAG
+  `
+  let FRAG = `
   varying vec2 coord;
   uniform vec4 value;
   void main(){
@@ -155,23 +135,38 @@ function circleShader(){
     float alpha=(1.0-r2)*(1.0-r2);
     gl_FragColor = FRAGCOLOR;
   }
-  */
+  `
+  return {
+    mult: new THREE.ShaderMaterial({
+      uniforms: {radius: {type: 'f'},center: {type: 'v2'},value: {type: 'v4'}},
+      vertexShader: VERT,
+      fragmentShader: FRAG.replace('FRAGCOLOR', '1.0-alpha*(1.0-value)'),
+      transparent: true,
+      depthTest: false,
+      blending: THREE.MultiplyBlending,
+    }),
+    add: new THREE.ShaderMaterial({
+      uniforms: {radius: {type: 'f'},center: {type: 'v2'},value: {type: 'v4'}},
+      vertexShader: VERT,
+      fragmentShader: FRAG.replace('FRAGCOLOR', 'alpha*value'),
+      transparent: true,
+      depthTest: false,
+      blending: THREE.CustomBlending,
+      blendSrc: THREE.OneFactor,
+      blendDst: THREE.OneFactor
+    })
+  }
 }
 
 function smokeShader(){
-  return new THREE.ShaderMaterial({
-    uniforms: {wave: {type: "t"}},
-    vertexShader: WaveSimulator.shaderCode(arguments.callee, 'VERT'),
-    fragmentShader: WaveSimulator.shaderCode(arguments.callee, 'FRAG'),
-  });
-  /*VERT
+  let VERT = `
   varying vec2 coord;
   void main(){
     coord=position.xy/2.0+vec2(0.5,0.5);
     gl_Position=vec4(position,1);
   }
-  */
-  /*FRAG
+  `
+  let FRAG = `
   varying vec2 coord;
   uniform sampler2D wave;
   void main(){
@@ -179,6 +174,11 @@ function smokeShader(){
     gl_FragColor.rgb = uvha.a*vec3(2,1,0.5);
     gl_FragColor.a = 1.0;
   }
-  */
+  `
+  return new THREE.ShaderMaterial({
+    uniforms: {wave: {type: "t"}},
+    vertexShader: VERT,
+    fragmentShader: FRAG,
+  });
 }
 </script>
