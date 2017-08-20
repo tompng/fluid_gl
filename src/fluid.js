@@ -1,4 +1,5 @@
 let THREE = require('three')
+let PoissonSolverGL = require('poisson_gl')
 function FluidSimulator(renderer, size, option) {
   if(!option)option = {}
   var camera = new THREE.Camera();
@@ -21,8 +22,10 @@ function FluidSimulator(renderer, size, option) {
   gl = renderer.getContext();
   var mesh = new THREE.Mesh(planeGeometry);
   scene.add(mesh);
-  var wave0 = createRenderTarget(size,size,{type:THREE.FloatType,filter:THREE.LinearFilter});
-  var wave1 = createRenderTarget(size,size,{type:THREE.FloatType,filter:THREE.LinearFilter});
+  var pressure = createRenderTarget(size,size,{type:THREE.FloatType,filter:THREE.LinearFilter});
+  var divV = createRenderTarget(size,size,{type:THREE.FloatType,filter:THREE.LinearFilter});
+  var wave = createRenderTarget(size,size,{type:THREE.FloatType,filter:THREE.LinearFilter});
+  var wavetmp = createRenderTarget(size,size,{type:THREE.FloatType,filter:THREE.LinearFilter});
   var maxStore = 128;
   var store = {
     target: createRenderTarget(1,maxStore,{filter:THREE.NearestFilter}),
@@ -55,12 +58,14 @@ function FluidSimulator(renderer, size, option) {
       depthBuffer: false
     });
   }
-  var advectionShader = FluidSimulator.advectionShader(size,true);
+  var advectionShader = FluidSimulator.advectionShader(size);
+  var divShader = FluidSimulator.divShader(size);
+  var pressuredVelocityShader = FluidSimulator.pressuredVelocityShader(size);
   var initShader = FluidSimulator.initShader();
   this.init = function(){
     mesh.material = initShader;
-    renderer.render(scene, camera, wave0);
-    renderer.render(scene, camera, wave1);
+    renderer.render(scene, camera, wave);
+    renderer.render(scene, camera, wavetmp);
   }
   this.init();
   this.storeLoad = function(){
@@ -115,11 +120,12 @@ function FluidSimulator(renderer, size, option) {
     obj.add.material.uniforms.value.value=new THREE.Vector4((1-vmult)*vx, (1-vmult)*vy, (1-hmult)*h, (1-amult)*a)
     obj.mult.visible=obj.add.visible=true;
   }
+  let poissonSolver = new PoissonSolverGL(renderer, size)
   this.calc = function(){
     if(disturbIndex){
       var autoClearWas = renderer.autoClear
       renderer.autoClear = false
-      renderer.render(disturbScene, camera, this.wave)
+      renderer.render(disturbScene, camera, wave)
       renderer.autoClear = autoClearWas
       for(var i=0;i<this.disturbIndex;i++){
         var obj = disturbObjects[i]
@@ -127,14 +133,19 @@ function FluidSimulator(renderer, size, option) {
       }
       disturbIndex = 0
     }
-    this.wave = wave0;
-    wave0 = wave1;
-    wave1 = this.wave;
     mesh.material = advectionShader;
-    advectionShader.uniforms.wave.value = wave0.texture || wave0;
-    renderer.render(scene, camera, wave1);
+    advectionShader.uniforms.wave.value = wave.texture;
+    renderer.render(scene, camera, wavetmp);
+    mesh.material = divShader
+    divShader.uniforms.wave.value = wavetmp.texture
+    renderer.render(scene, camera, divV)
+    poissonSolver.solve(divV, pressure)
+    mesh.material = pressuredVelocityShader
+    pressuredVelocityShader.uniforms.wave.value = wavetmp.texture
+    pressuredVelocityShader.uniforms.pressure.value = pressure.texture
+    renderer.render(scene, camera, wave)
   }
-  this.wave=wave1;
+  this.wave=wave;
   this.storePixel('test',0,0);
   this.storeDone();
   this.storeLoad();
@@ -215,19 +226,21 @@ FluidSimulator.divShader = function(size){
 FluidSimulator.pressuredVelocityShader = function(size){
   let FRAG = `
   uniform sampler2D wave, pressure;
+  const vec2 dx = vec2(1.0/SIZE, 0);
+  const vec2 dy = vec2(0, 1.0/SIZE);
   void main(){
     vec2 coord = gl_FragCoord.xy/SIZE;
     vec4 uvzw = texture2D(wave, coord);
     vec2 grad = vec2(
       texture2D(pressure,coord+dx).x - texture2D(pressure,coord-dx).x,
       texture2D(pressure,coord+dy).x - texture2D(pressure,coord-dy).x
-    )
-    gl_FragColor = uvzw - vec4(grad, 0, 0)
+    );
+    gl_FragColor = uvzw - vec4(grad*0.5, 0, 0);
   }
   `
   var defs = {SIZE: size.toFixed(2)};
   return new THREE.ShaderMaterial({
-    uniforms: {wave: {type: "t"}},
+    uniforms: {wave: {type: 't'}, pressure: {type: 't'}},
     defines: defs,
     vertexShader: FluidSimulator.vertexShaderCode,
     fragmentShader: FRAG,
