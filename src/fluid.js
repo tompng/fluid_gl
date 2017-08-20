@@ -1,156 +1,49 @@
+'use strict'
 let THREE = require('three')
 let PoissonSolverGL = require('poisson_gl')
-function FluidSimulator(renderer, size, option) {
-  if(!option)option = {}
-  var camera = new THREE.Camera();
-  var scene = new THREE.Scene();
-  var disturbScene = new THREE.Scene();
-  var disturbObjects = []
-  var planeGeometry = new THREE.PlaneBufferGeometry(2,2);
-  for(var i=0;i<100;i++){
-    var shader=circleShader();
-    var obj={
-      mult: new THREE.Mesh(planeGeometry,shader.mult),
-      add: new THREE.Mesh(planeGeometry,shader.add)
-    };
-    disturbScene.add(obj.mult,obj.add);
-    obj.mult.visible=obj.add.visible=false;
-    disturbObjects.push(obj);
+let SimulatorBase = require('./simulator_base')
+
+class FluidSimulator extends SimulatorBase {
+  constructor(renderer, size, option){
+    if(!option)option = {}
+    super(renderer)
+    this._initDisturb()
+    this._initStore(size)
+    this.pressure = SimulatorBase.createRenderTarget(size,size)
+    this.divV = SimulatorBase.createRenderTarget(size,size)
+    this.wave = SimulatorBase.createRenderTarget(size,size)
+    this.wavetmp = SimulatorBase.createRenderTarget(size,size)
+    this.advectionShader = FluidSimulator.advectionShader(size)
+    this.divShader = FluidSimulator.divShader(size)
+    this.pressuredVelocityShader = FluidSimulator.pressuredVelocityShader(size)
+    this.poissonSolver = new PoissonSolverGL(renderer, size)
   }
-  var disturbIndex = 0
-  camera.position.z = 1;
-  gl = renderer.getContext();
-  var mesh = new THREE.Mesh(planeGeometry);
-  scene.add(mesh);
-  var pressure = createRenderTarget(size,size,{type:THREE.FloatType,filter:THREE.LinearFilter});
-  var divV = createRenderTarget(size,size,{type:THREE.FloatType,filter:THREE.LinearFilter});
-  var wave = createRenderTarget(size,size,{type:THREE.FloatType,filter:THREE.LinearFilter});
-  var wavetmp = createRenderTarget(size,size,{type:THREE.FloatType,filter:THREE.LinearFilter});
-  var maxStore = 128;
-  var store = {
-    target: createRenderTarget(1,maxStore,{filter:THREE.NearestFilter}),
-    array: new Uint8Array(maxStore*4),
-    positions: {},
-    index: 0,
-    max: maxStore
+  clear(){
+    this._clearTarget(wave)
   }
-  store.scene = new THREE.Scene();
-  store.meshes = [];
-  store.shader = FluidSimulator.storeShader();
-  store.shader.uniforms.size.value = size;
-  store.shader.uniforms.height.value = store.max;
-  for(var i=0;i<maxStore;i++){
-    var smesh = new THREE.Mesh(new THREE.PlaneBufferGeometry(2, 2));
-    smesh.material = store.shader;
-    store.meshes.push(smesh);
-    store.scene.add(smesh);
+  disturb(position, option){
+    let vmult = option.vmult || 0
+    let amult = option.amult || 0.95
+    let bmult = option.bmult || 0.95
+    let vx = option.vx || 0
+    let vy = option.vy || 0
+    let a = option.a || 0
+    let b = option.b || 0
+    let mult = new THREE.Vector4(vmult, vmult, amult, bmult)
+    let add = new THREE.Vector4((1-vmult)*vx, (1-vmult)*vy, (1-amult)*a, (1-bmult)*b)
+    super.disturb(position, option.r||0.1, mult, add)
   }
-  function createRenderTarget(w,h,option){
-    option=option||{};
-    return new THREE.WebGLRenderTarget(w, h, {
-      wrapS: THREE.RepeatWrapping,
-      wrapT: THREE.RepeatWrapping,
-      minFilter: option.filter || THREE.LinearFilter,
-      magFilter: option.filter || THREE.LinearFilter,
-      format: option.format || THREE.RGBAFormat,
-      type: option.type || THREE.UnsignedByteType,
-      stencilBuffer: false,
-      depthBuffer: false
-    });
+  calc(){
+    this._disturbApply(this.wave)
+    this._render(this.wavetmp, this.advectionShader, { wave: this.wave.texture })
+    this._render(this.divV, this.divShader, { wave: this.wavetmp.texture })
+    this.poissonSolver.solve(this.divV, this.pressure)
+    this._render(
+      this.wave,
+      this.pressuredVelocityShader,
+      { wave: this.wavetmp.texture, pressure: this.pressure.texture }
+    )
   }
-  var advectionShader = FluidSimulator.advectionShader(size);
-  var divShader = FluidSimulator.divShader(size);
-  var pressuredVelocityShader = FluidSimulator.pressuredVelocityShader(size);
-  var initShader = FluidSimulator.initShader();
-  this.init = function(){
-    mesh.material = initShader;
-    renderer.render(scene, camera, wave);
-    renderer.render(scene, camera, wavetmp);
-  }
-  this.init();
-  this.storeLoad = function(){
-    if(store.index){
-      gl.bindFramebuffer(gl.FRAMEBUFFER, store.target.__webglFramebuffer, true);
-      gl.bindFramebuffer(gl.FRAMEBUFFER,store.target.__webglFramebuffer,true);
-      gl.readPixels(0, 0, 1, store.index, gl.RGBA, gl.UNSIGNED_BYTE, store.array);
-    }
-    store.meshes.forEach(function(m){m.visible=false;})
-    store.captured = {};
-    for(var id in store.positions){
-      var index = store.positions[id];
-      var arr=[]
-      for(var i=0;i<4;i++)arr[i]=store.array[4*index+i]/0xff;
-      store.captured[id] = {vx: arr[0], vy: arr[1], h: arr[2], a: arr[3]};
-    }
-    window.store=store;
-    store.index = 0;
-    store.positions = {};
-  }
-  this.readStoredPixel = function(id){
-    return store.captured[id];
-  }
-  this.storePixel = function(id,x,y){
-    if(store.index==store.max)return;
-    if(x<0||x>=size||y<0||y>=size)return;
-    store.positions[id]=store.index;
-    var mesh = store.meshes[store.index];
-    mesh.position.x = x/size;
-    mesh.position.y = y/size;
-    mesh.position.z = store.index/store.max;
-    mesh.visible = true;
-    store.index++;
-  }
-  this.storeDone = function(){
-    store.shader.uniforms.texture.value = this.wave.texture || this.wave;
-    renderer.render(store.scene, camera, store.target);
-  }
-  this.disturb = function(position, option){
-    var obj = disturbObjects[disturbIndex++]
-    if(!obj)return
-    obj.mult.material.uniforms.center.value=obj.add.material.uniforms.center.value=new THREE.Vector4(position.x, position.y);
-    obj.mult.material.uniforms.radius.value=obj.add.material.uniforms.radius.value=option.r || 0.1;
-    var vmult = option.vmult || 0
-    var hmult = option.hmult || 1
-    var amult = option.amult || 0.95
-    obj.mult.material.uniforms.value.value=new THREE.Vector4(vmult, vmult, hmult, amult);
-    var vx = option.vx || 0
-    var vy = option.vy || 0
-    var h = option.h || 0
-    var a = option.a || 0
-    obj.add.material.uniforms.value.value=new THREE.Vector4((1-vmult)*vx, (1-vmult)*vy, (1-hmult)*h, (1-amult)*a)
-    obj.mult.visible=obj.add.visible=true;
-  }
-  let poissonSolver = new PoissonSolverGL(renderer, size)
-  this.calc = function(){
-    if(disturbIndex){
-      var autoClearWas = renderer.autoClear
-      renderer.autoClear = false
-      renderer.render(disturbScene, camera, wave)
-      renderer.autoClear = autoClearWas
-      for(var i=0;i<this.disturbIndex;i++){
-        var obj = disturbObjects[i]
-        obj.add.visible = obj.mult.visible = false
-      }
-      disturbIndex = 0
-    }
-    mesh.material = advectionShader;
-    advectionShader.uniforms.wave.value = wave.texture;
-    renderer.render(scene, camera, wavetmp);
-    mesh.material = divShader
-    divShader.uniforms.wave.value = wavetmp.texture
-    renderer.render(scene, camera, divV)
-    poissonSolver.solve(divV, pressure)
-    mesh.material = pressuredVelocityShader
-    pressuredVelocityShader.uniforms.wave.value = wavetmp.texture
-    pressuredVelocityShader.uniforms.pressure.value = pressure.texture
-    renderer.render(scene, camera, wave)
-  }
-  this.wave=wave;
-  this.storePixel('test',0,0);
-  this.storeDone();
-  this.storeLoad();
-  var test = this.readStoredPixel('test');
-  console.error(test)
 }
 
 FluidSimulator.storeShader = function(){
@@ -188,16 +81,7 @@ FluidSimulator.storeShader = function(){
   });
 }
 FluidSimulator.vertexShaderCode = 'void main(){gl_Position=vec4(position,1);}';
-FluidSimulator.initShader = function(){
-  return new THREE.ShaderMaterial({
-    vertexShader: FluidSimulator.vertexShaderCode,
-    fragmentShader: 'void main(){gl_FragColor = vec4(0,0,0,0);}',
-    transparent: true,
-    blending: THREE.NoBlending,
-    blendSrc: THREE.OneFactor,
-    blendDst: THREE.ZeroFactor
-  });
-}
+
 
 FluidSimulator.divShader = function(size){
   let FRAG = `
