@@ -67,7 +67,7 @@ onload=function(){
     mouse.val = mouse.down?1:0;
     mouse.timer = setTimeout(function(){mouse.vx=mouse.vy=mouse.val=0;mouse.timer=null},40);
   }
-  simulator = new WaveSimulator(renderer, SIZE);
+  simulator = new FluidSimulator(renderer, SIZE);
   window.dtav=0;
   animate();
   function animate(){
@@ -153,7 +153,7 @@ function smokeShader(){
   uniform sampler2D wave;
   void main(){
     vec4 uvha=texture2D(wave,coord);
-    gl_FragColor.rgb = uvha.a*vec3(2,1,0.5);
+    gl_FragColor.rgb = uvha.a*vec3(8,4,2);
     gl_FragColor.a = 1.0;
   }
   `
