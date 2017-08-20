@@ -30,8 +30,8 @@ class WaveSimulator extends SimulatorBase {
     var h = option.h || 0
     var a = option.a || 0
     let mult = new THREE.Vector4(vmult, vmult, hmult, amult)
-    let add = new THREE.Vector4((1-vmult)*vx, (1-vmult)*vy, (1-hmult)*h, (1-amult)*a)
-    super.disturb(position, option.r || 0.1, mult, add)
+    let add = new THREE.Vector4(-vx*(1-vmult), -vy*(1-vmult), h*(1-hmult), a*(1-amult))
+    super.disturb(position, option.r || 0.05, mult, add)
   }
   calc(){
     this._disturbApply(this.wave)
@@ -40,6 +40,9 @@ class WaveSimulator extends SimulatorBase {
     this.wave1 = this.wave;
     this._render(this.wave1, this.waveShader, { wave: this.wave0.texture })
     if(this.normalShader)this._calcNormal()
+  }
+  _storeConvert(arr){
+    return { vx: arr[0], vy: arr[1], h: arr[2], a: arr[3] }
   }
   _calcNormal(){
     mesh.material = normalShader;

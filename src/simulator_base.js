@@ -75,10 +75,13 @@ class SimulatorBase {
       let index = store.positions[id]
       let arr=[]
       for(let i=0; i<4; i++)arr[i]=store.array[4*index+i]/0xff
-      store.captured[id] = {vx: arr[0], vy: arr[1], h: arr[2], a: arr[3]}
+      store.captured[id] = this._storeConvert(arr)
     }
     store.index = 0
     store.positions = {}
+  }
+  _storeConvert(arr){
+    return { r: arr[0], g: arr[1], b: arr[2], a: arr[3] }
   }
   readStoredPixel(id){
     return this.store.captured[id]
@@ -102,8 +105,8 @@ class SimulatorBase {
   disturb(position, r, mult, add){
     let obj = this.disturbObjects[this.disturbIndex++]
     if(!obj)return
-    obj.mult.material.uniforms.center.value=obj.add.material.uniforms.center.value=new THREE.Vector4(position.x, position.y)
-    obj.mult.material.uniforms.radius.value=obj.add.material.uniforms.radius.value=r
+    obj.mult.material.uniforms.center.value=obj.add.material.uniforms.center.value=new THREE.Vector4(2*position.x-1, 2*position.y-1)
+    obj.mult.material.uniforms.radius.value=obj.add.material.uniforms.radius.value=2*r
     obj.mult.material.uniforms.value.value=mult
     obj.add.material.uniforms.value.value=add
     obj.mult.visible=obj.add.visible=true

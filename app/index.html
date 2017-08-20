@@ -27,7 +27,9 @@ function leapInit(){
     }
   };
 }
-onload=function(){
+
+function start(simulatorClass){
+  document.querySelector('.buttons').remove()
   leapInit();
   var planeGeometry = new THREE.PlaneBufferGeometry(2,2);
   camera = new THREE.Camera();
@@ -67,7 +69,7 @@ onload=function(){
     mouse.val = mouse.down?1:0;
     mouse.timer = setTimeout(function(){mouse.vx=mouse.vy=mouse.val=0;mouse.timer=null},40);
   }
-  simulator = new FluidSimulator(renderer, SIZE);
+  simulator = new simulatorClass(renderer, SIZE);
   animate();
   function animate(){
     var ps=[];if(mouse)ps.push(mouse);
@@ -84,9 +86,9 @@ onload=function(){
     })
     for(var i in ps){
       var p = ps[i]
-      simulator.disturb({x: 2*p.x-1, y: 2*p.y-1}, {
-        vx: -16*p.vx,
-        vy: -16*p.vy,
+      simulator.disturb({x: p.x, y: p.y}, {
+        vx: 16*p.vx,
+        vy: 16*p.vy,
         a: p.val,
         b: p.val
       })
@@ -111,7 +113,7 @@ function smokeShader(){
   uniform sampler2D wave;
   void main(){
     vec4 uvha=texture2D(wave,coord);
-    gl_FragColor.rgb = uvha.a*vec3(8,4,2);
+    gl_FragColor.rgb = uvha.a*vec3(8,4,2) + uvha.z*vec3(4,0,0);
     gl_FragColor.a = 1.0;
   }
   `
@@ -122,3 +124,21 @@ function smokeShader(){
   });
 }
 </script>
+<style>
+.start-button{
+  display: inline-block;
+  padding: 10px 80px;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0.5;
+  margin: 10px;
+}
+.start-button:hover{opacity: 0.8;}
+.start-button:active{opacity: 1;}
+canvas{cursor: pointer;}
+</style>
+<div class='buttons'>
+  <div onclick='start(WaveSimulator)' class='start-button'>WaveSimulator</div>
+  <div onclick='start(FluidSimulator)' class='start-button'>FluidSimulator</div>
+</div>

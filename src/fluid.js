@@ -30,8 +30,8 @@ class FluidSimulator extends SimulatorBase {
     let a = option.a || 0
     let b = option.b || 0
     let mult = new THREE.Vector4(vmult, vmult, amult, bmult)
-    let add = new THREE.Vector4((1-vmult)*vx, (1-vmult)*vy, (1-amult)*a, (1-bmult)*b)
-    super.disturb(position, option.r||0.1, mult, add)
+    let add = new THREE.Vector4(-vx*(1-vmult), -vy*(1-vmult), a*(1-amult), b*(1-bmult))
+    super.disturb(position, option.r || 0.05, mult, add)
   }
   calc(){
     this._disturbApply(this.wave)
@@ -43,6 +43,9 @@ class FluidSimulator extends SimulatorBase {
       this.pressuredVelocityShader,
       { wave: this.wavetmp.texture, pressure: this.pressure.texture }
     )
+  }
+  _storeConvert(arr){
+    return { vx: arr[0], vy: arr[1], a: arr[2], b: arr[3] }
   }
 }
 
