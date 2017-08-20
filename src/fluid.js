@@ -9,17 +9,17 @@ class FluidSimulator extends SimulatorBase {
     super(renderer)
     this._initDisturb()
     this._initStore(size)
-    this.pressure = SimulatorBase.createRenderTarget(size,size)
-    this.divV = SimulatorBase.createRenderTarget(size,size)
-    this.wave = SimulatorBase.createRenderTarget(size,size)
-    this.wavetmp = SimulatorBase.createRenderTarget(size,size)
+    this.pressure = SimulatorBase.createRenderTarget(size, size)
+    this.divV = SimulatorBase.createRenderTarget(size, size)
+    this.wave = SimulatorBase.createRenderTarget(size, size)
+    this.wavetmp = SimulatorBase.createRenderTarget(size, size)
     this.advectionShader = FluidSimulator.advectionShader(size)
     this.divShader = FluidSimulator.divShader(size)
     this.pressuredVelocityShader = FluidSimulator.pressuredVelocityShader(size)
     this.poissonSolver = new PoissonSolverGL(renderer, size)
   }
   clear(){
-    this._clearTarget(wave)
+    this._clearTarget(this.wave)
   }
   disturb(position, option){
     let vmult = option.vmult || 0
