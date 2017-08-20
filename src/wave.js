@@ -326,48 +326,5 @@ WaveSimulator.waveAddShader = function(){
   });
 }
 
-function circleShader(){
-  let VERT = `
-  uniform vec2 center;
-  uniform float radius;
-  varying vec2 coord;
-  void main(){
-    gl_Position=vec4(center+radius*position.xy,0,1);
-    coord = position.xy;
-  }
-  `
-  let FRAG = `
-  varying vec2 coord;
-  uniform vec4 value;
-  void main(){
-    float r2=dot(coord,coord);
-    if(r2>1.0)discard;
-    float alpha=(1.0-r2)*(1.0-r2);
-    gl_FragColor = FRAGCOLOR;
-  }
-  `
-  return {
-    mult: new THREE.ShaderMaterial({
-      uniforms: {radius: {type: 'f'},center: {type: 'v2'},value: {type: 'v4'}},
-      vertexShader: VERT,
-      fragmentShader: FRAG.replace('FRAGCOLOR', '1.0-alpha*(1.0-value)'),
-      transparent: true,
-      depthTest: false,
-      blending: THREE.MultiplyBlending,
-    }),
-    add: new THREE.ShaderMaterial({
-      uniforms: {radius: {type: 'f'},center: {type: 'v2'},value: {type: 'v4'}},
-      vertexShader: VERT,
-      fragmentShader: FRAG.replace('FRAGCOLOR', 'alpha*value'),
-      transparent: true,
-      depthTest: false,
-      blending: THREE.CustomBlending,
-      blendSrc: THREE.OneFactor,
-      blendDst: THREE.OneFactor
-    })
-  }
-}
-
-
 module.exports = WaveSimulator
 WaveSimulator.THREE = THREE

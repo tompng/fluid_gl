@@ -16,10 +16,10 @@ class SimulatorBase {
     this.disturbObjects = []
     this.disturbIndex = 0
     for(let i=0; i<100; i++){
-      let shader = circleShader()
+      let shaders = disturbCircleShaders()
       let obj = {
-        mult: new THREE.Mesh(this.planeGeometry, shader.mult),
-        add: new THREE.Mesh(this.planeGeometry, shader.add)
+        mult: new THREE.Mesh(this.planeGeometry, shaders.mult),
+        add: new THREE.Mesh(this.planeGeometry, shaders.add)
       }
       this.disturbScene.add(obj.mult,obj.add)
       obj.mult.visible = obj.add.visible = false
@@ -41,15 +41,15 @@ class SimulatorBase {
     store.shader.uniforms.size.value = size
     store.shader.uniforms.height.value = maxStore
     for(let i=0; i<maxStore; i++){
-      let smesh = new THREE.Mesh(new THREE.PlaneBufferGeometry(2, 2));
-      smesh.material = store.shader;
-      store.meshes.push(smesh);
-      store.scene.add(smesh);
+      let smesh = new THREE.Mesh(new THREE.PlaneBufferGeometry(2, 2))
+      smesh.material = store.shader
+      store.meshes.push(smesh)
+      store.scene.add(smesh)
     }
     this.store = store
   }
   static createRenderTarget(w, h, option){
-    option=option||{};
+    option=option||{}
     return new THREE.WebGLRenderTarget(w, h, {
       wrapS: THREE.RepeatWrapping,
       wrapT: THREE.RepeatWrapping,
@@ -62,7 +62,7 @@ class SimulatorBase {
     })
   }
   storeLoad(){
-    let gl = this.renderer.getContext();
+    let gl = this.renderer.getContext()
     let store = this.store
     if(store.index){
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.store.target.__webglFramebuffer, true)
@@ -70,18 +70,18 @@ class SimulatorBase {
       gl.readPixels(0, 0, 1, this.store.index, gl.RGBA, gl.UNSIGNED_BYTE, this.store.array)
     }
     store.meshes.forEach((m)=>{m.visible=false})
-    store.captured = {};
+    store.captured = {}
     for(let id in store.positions){
       let index = store.positions[id]
       let arr=[]
-      for(let i=0;i<4;i++)arr[i]=store.array[4*index+i]/0xff
+      for(let i=0; i<4; i++)arr[i]=store.array[4*index+i]/0xff
       store.captured[id] = {vx: arr[0], vy: arr[1], h: arr[2], a: arr[3]}
     }
     store.index = 0
     store.positions = {}
   }
   readStoredPixel(id){
-    return this.store.captured[id];
+    return this.store.captured[id]
   }
   storePixel(id,x,y){
     let store = this.store
@@ -135,7 +135,7 @@ class SimulatorBase {
   }
   static generateCalcShader(option){
     let defs = Object.assign({}, option.defs)
-    if(option.size)defs.SIZE = size.toFixed(2)
+    if(option.size)defs.SIZE = option.size.toFixed(2)
     return new THREE.ShaderMaterial({
       uniforms: option.uniforms || {},
       defines: defs,
@@ -169,21 +169,17 @@ SimulatorBase.storeShader = function(){
   varying vec2 vsrc;
   void main(){gl_FragColor=texture2D(texture,vsrc);}
   `
-  return new THREE.ShaderMaterial({
+  return SimulatorBase.generateCalcShader({
     uniforms: {
       texture: {type: "t"},
       size: {type: 'f'},
       height: {type: 'f'},
     },
-    vertexShader: VERT,
-    fragmentShader: FRAG,
-    transparent: true,
-    blending: THREE.NoBlending,
-    blendSrc: THREE.OneFactor,
-    blendDst: THREE.ZeroFactor
-  });
+    vertex: VERT,
+    fragment: FRAG
+  })
 }
-SimulatorBase.vertexShaderCode = 'void main(){gl_Position=vec4(position,1);}';
+SimulatorBase.vertexShaderCode = 'void main(){gl_Position=vec4(position,1);}'
 
 SimulatorBase.zeroShader = SimulatorBase.generateCalcShader({
   fragment: 'void main(){gl_FragColor = vec4(0,0,0,0);}'
@@ -197,7 +193,7 @@ uniform vec4 value;
 void main(){gl_FragColor=value;}
 `
 SimulatorBase.waveMultShader = new THREE.ShaderMaterial({
-  uniforms: {value: {type: 'v4'}},
+  uniforms: { value: { type: 'v4' } },
   vertexShader: waveDisturbVertexCode,
   fragmentShader: waveDisturbFragmentCode,
   transparent: true,
@@ -205,7 +201,7 @@ SimulatorBase.waveMultShader = new THREE.ShaderMaterial({
   blending: THREE.MultiplyBlending,
 })
 SimulatorBase.waveAddShader = new THREE.ShaderMaterial({
-  uniforms: {value: {type: 'v4'}},
+  uniforms: { value: { type: 'v4' } },
   vertexShader: waveDisturbVertexCode,
   fragmentShader: waveDisturbFragmentCode,
   transparent: true,
@@ -215,44 +211,46 @@ SimulatorBase.waveAddShader = new THREE.ShaderMaterial({
   blendDst: THREE.OneFactor
 })
 
-let disturbCircleVertexCode = `
-uniform vec2 center;
-uniform float radius;
-varying vec2 coord;
-void main(){
-  gl_Position=vec4(center+radius*position.xy,0,1);
-  coord = position.xy;
-}
-`
-let disturbCircleFragmentCode = `
-varying vec2 coord;
-uniform vec4 value;
-void main(){
-  float r2=dot(coord,coord);
-  if(r2>1.0)discard;
-  float alpha=(1.0-r2)*(1.0-r2);
-  gl_FragColor = FRAGCOLOR;
-}
-`
-let disturbCircleUniforms = {
-  radius: { type: 'f' },
-  center: { type: 'v2' },
-  value: { type: 'v4' }
-}
 function disturbCircleShaders(){
+  let vertex = `
+  uniform vec2 center;
+  uniform float radius;
+  varying vec2 coord;
+  void main(){
+    gl_Position=vec4(center+radius*position.xy,0,1);
+    coord = position.xy;
+  }
+  `
+  let fragment = `
+  varying vec2 coord;
+  uniform vec4 value;
+  void main(){
+    float r2=dot(coord,coord);
+    if(r2>1.0)discard;
+    float alpha=(1.0-r2)*(1.0-r2);
+    gl_FragColor = FRAGCOLOR;
+  }
+  `
+  function uniforms(){
+    return {
+      radius: { type: 'f' },
+      center: { type: 'v2' },
+      value: { type: 'v4' }
+    }
+  }
   return {
     mult: new THREE.ShaderMaterial({
-      uniforms: disturbCircleUniforms,
-      vertexShader: disturbCircleVertexCode,
-      fragmentShader: disturbCircleFragmentCode.replace('FRAGCOLOR', '1.0-alpha*(1.0-value)'),
+      uniforms: uniforms(),
+      vertexShader: vertex,
+      fragmentShader: fragment.replace('FRAGCOLOR', '1.0-alpha*(1.0-value)'),
       transparent: true,
       depthTest: false,
       blending: THREE.MultiplyBlending,
     }),
     add: new THREE.ShaderMaterial({
-      uniforms: disturbCircleUniforms,
-      vertexShader: disturbCircleVertexCode,
-      fragmentShader: disturbCircleFragmentCode.replace('FRAGCOLOR', 'alpha*value'),
+      uniforms: uniforms(),
+      vertexShader: vertex,
+      fragmentShader: fragment.replace('FRAGCOLOR', 'alpha*value'),
       transparent: true,
       depthTest: false,
       blending: THREE.CustomBlending,
@@ -261,7 +259,6 @@ function disturbCircleShaders(){
     })
   }
 }
-
 
 module.exports = SimulatorBase
 SimulatorBase.THREE = THREE
