@@ -7,8 +7,6 @@ class FluidSimulator extends SimulatorBase {
   constructor(renderer, size, option){
     if(!option)option = {}
     super(renderer)
-    this._initDisturb()
-    this._initStore(size)
     this.pressure = SimulatorBase.createRenderTarget(size, size)
     this.divV = SimulatorBase.createRenderTarget(size, size)
     this.wave = SimulatorBase.createRenderTarget(size, size)

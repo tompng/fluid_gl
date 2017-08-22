@@ -15,7 +15,7 @@ class SimulatorBase {
     this.disturbScene = new THREE.Scene()
     this.disturbObjects = []
     this.disturbIndex = 0
-    for(let i=0; i<100; i++){
+    for(let i=0; i<256; i++){
       let shaders = disturbCircleShaders()
       let obj = {
         mult: new THREE.Mesh(this.planeGeometry, shaders.mult),
@@ -26,8 +26,8 @@ class SimulatorBase {
       this.disturbObjects.push(obj)
     }
   }
-  _initStore(size){
-    let maxStore = 128
+  _initStore(){
+    let maxStore = 256
     let store = {
       target: SimulatorBase.createRenderTarget(maxStore, 1, { filter: THREE.NearestFilter }),
       array: new Float32Array(maxStore*4),
@@ -42,20 +42,8 @@ class SimulatorBase {
     store.scene.add(points)
     this.store = store
   }
-  static createRenderTarget(w, h, option){
-    option=option||{}
-    return new THREE.WebGLRenderTarget(w, h, {
-      wrapS: THREE.RepeatWrapping,
-      wrapT: THREE.RepeatWrapping,
-      minFilter: option.filter || THREE.LinearFilter,
-      magFilter: option.filter || THREE.LinearFilter,
-      format: option.format || THREE.RGBAFormat,
-      type: option.type || THREE.FloatType,
-      stencilBuffer: false,
-      depthBuffer: false
-    })
-  }
   read(x, y, cb){
+    if(!this.store)this._initStore()
     let store = this.store
     if(store.index == store.max)return
     store.callbacks[store.index]=cb
@@ -65,7 +53,7 @@ class SimulatorBase {
   }
   _storeRead(){
     let store = this.store
-    if(!store.index)return
+    if(!store || !store.index)return
     this.renderer.readRenderTargetPixels(store.target, 0, 0, store.index, 1, store.array)
     let array = store.array
     store.callbacks.forEach((cb, i)=>{
@@ -80,11 +68,12 @@ class SimulatorBase {
     return { r: r, g: g, b: b, a: a }
   }
   _storeExecute(target){
-    if(this.store.index == 0)return
+    if(!this.store || !this.store.index)return
     this.store.shader.uniforms.texture.value = target.texture
     this.renderer.render(this.store.scene, this.camera, this.store.target)
   }
   disturb(position, r, mult, add){
+    if(!this.disturbScene)this._initDisturb()
     let obj = this.disturbObjects[this.disturbIndex++]
     if(!obj)return
     obj.mult.material.uniforms.center.value=obj.add.material.uniforms.center.value=new THREE.Vector4(2*position.x-1, 2*position.y-1)
@@ -117,6 +106,19 @@ class SimulatorBase {
       }
     }
     this.renderer.render(this.scene, this.camera, target)
+  }
+  static createRenderTarget(w, h, option){
+    option=option||{}
+    return new THREE.WebGLRenderTarget(w, h, {
+      wrapS: THREE.RepeatWrapping,
+      wrapT: THREE.RepeatWrapping,
+      minFilter: option.filter || THREE.LinearFilter,
+      magFilter: option.filter || THREE.LinearFilter,
+      format: option.format || THREE.RGBAFormat,
+      type: option.type || THREE.FloatType,
+      stencilBuffer: false,
+      depthBuffer: false
+    })
   }
   static generateCalcShader(option){
     let defs = Object.assign({}, option.defs)

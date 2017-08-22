@@ -5,8 +5,6 @@ class WaveSimulator extends SimulatorBase {
   constructor(renderer, size, option) {
     if(!option)option = {}
     super(renderer)
-    this._initDisturb()
-    this._initStore(size)
     this.wave0 = SimulatorBase.createRenderTarget(size, size)
     this.wave1 = SimulatorBase.createRenderTarget(size, size)
     if(option.generateNormal){
