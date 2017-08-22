@@ -1,4 +1,5 @@
 'use strict'
+
 let THREE = require('three')
 let SimulatorBase = require('./simulator_base')
 class WaveSimulator extends SimulatorBase {
@@ -132,4 +133,3 @@ WaveSimulator.normalShader = function(size, pattern){
 }
 
 module.exports = WaveSimulator
-WaveSimulator.THREE = THREE

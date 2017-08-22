@@ -1,4 +1,5 @@
 'use strict'
+
 let THREE = require('three')
 let PoissonSolverGL = require('poisson_gl')
 let SimulatorBase = require('./simulator_base')
@@ -103,4 +104,3 @@ FluidSimulator.advectionShader = function(size){
 }
 
 module.exports = FluidSimulator
-FluidSimulator.THREE = THREE

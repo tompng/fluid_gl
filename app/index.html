@@ -6,6 +6,7 @@ body{padding:0;margin:0;text-align:center;background:black;}
 canvas{width:100vmin !important;height:100vmin !important;}
 </style>
 <script>
+var THREE = FluidGL.THREE
 var SIZE=256;
 var pointables=[],hands=[];
 function leapInit(){
@@ -146,6 +147,6 @@ canvas{cursor: pointer;}
 </style>
 <div style='color:white;position:fixed;text-align:left;'></div>
 <div class='buttons'>
-  <div onclick='start(WaveSimulator)' class='start-button'>WaveSimulator</div>
-  <div onclick='start(FluidSimulator)' class='start-button'>FluidSimulator</div>
+  <div onclick='start(FluidGL.WaveSimulator)' class='start-button'>WaveSimulator</div>
+  <div onclick='start(FluidGL.FluidSimulator)' class='start-button'>FluidSimulator</div>
 </div>
