@@ -31,7 +31,7 @@ class SimulatorBase {
     let store = {
       target: SimulatorBase.createRenderTarget(1,maxStore,{filter:THREE.NearestFilter}),
       array: new Float32Array(maxStore*4),
-      positions: {},
+      callbacks: [],
       scene: new THREE.Scene(),
       shader: SimulatorBase.storeShader(),
       meshes: [],
@@ -61,42 +61,35 @@ class SimulatorBase {
       depthBuffer: false
     })
   }
-  storeLoad(){
-    let gl = this.renderer.getContext()
+  read(x,y,cb){
     let store = this.store
-    if(store.index){
-      this.renderer.readRenderTargetPixels(this.store.target, 0, 0, 1, this.store.index, this.store.array)
-    }
-    store.meshes.forEach((m)=>{m.visible=false})
-    store.captured = {}
-    for(let id in store.positions){
-      let index = store.positions[id]
-      let arr=[]
-      for(let i=0; i<4; i++)arr[i]=store.array[4*index+i]
-      store.captured[id] = this._storeConvert(arr)
-    }
-    store.index = 0
-    store.positions = {}
-  }
-  _storeConvert(arr){
-    return { r: arr[0], g: arr[1], b: arr[2], a: arr[3] }
-  }
-  readStoredPixel(id){
-    return this.store.captured[id]
-  }
-  storePixel(id,x,y){
-    let store = this.store
-    if(store.index==store.max)return
-    if(x<0||x>=1||y<0||y>=1)return
-    store.positions[id]=store.index
+    if(store.index == store.max)return
+    store.callbacks[store.index]=cb
     let mesh = store.meshes[store.index]
-    mesh.position.x = x
-    mesh.position.y = y
+    mesh.position.x = (x%1+1)%1
+    mesh.position.y = (y%1+1)%1
     mesh.position.z = store.index/store.max
     mesh.visible = true
     store.index++
   }
-  storeDone(){
+  _storeRead(){
+    let store = this.store
+    if(!store.index)return
+    this.renderer.readRenderTargetPixels(this.store.target, 0, 0, 1, this.store.index, this.store.array)
+    store.meshes.forEach((m)=>{m.visible=false})
+    let array = store.array
+    store.callbacks.forEach((cb, i)=>{
+      let index = 4*i
+      cb(this._storeConvert(array[4*i], array[4*i+1], array[4*i+2], array[4*i+3]))
+    })
+    store.index = 0
+    store.callbacks = []
+  }
+  _storeConvert(r, g, b, a){
+    return { r: r, g: g, b: b, a: a }
+  }
+  _storeExecute(target){
+    if(this.store.index == 0)return
     this.store.shader.uniforms.texture.value = this.wave.texture
     this.renderer.render(this.store.scene, this.camera, this.store.target)
   }

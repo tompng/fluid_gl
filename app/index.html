@@ -95,12 +95,11 @@ function start(simulatorClass){
     }
 
     for(var i=0;i<4;i++)simulator.calc()
-    simulator.storePixel('p1', mouse.x, mouse.y)
-    simulator.storeDone()
-    simulator.storeLoad()
-    pix = simulator.readStoredPixel('p1')
-    if(pix)
-    document.querySelector('div').innerHTML=[pix.vx,pix.vy,pix.h,pix.a,pix.b].map((a)=>(a||0).toFixed(8)).join("<br>")
+    simulator.read(mouse.x, mouse.y, (val)=>{
+      document.querySelector('div').innerHTML=Object.keys(val).map((key)=>{
+        return key + ': ' + val[key].toFixed(4)
+      }).join("<br>")
+    })
     plane.material.uniforms.wave.value = simulator.wave.texture
     renderer.render(scene, camera);
     requestAnimationFrame(animate);
