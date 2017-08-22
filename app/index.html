@@ -1,12 +1,9 @@
 <script src="bundle.js"></script>
-<style>
-  canvas{width:512px !important;height:512px !important;}
-</style>
 <script>
 var SIZE=256
 
 function start(simulatorClass){
-  renderer = new FluidGL.THREE.WebGLRenderer()
+  renderer = new THREE.WebGLRenderer()
   renderer.setSize(SIZE,SIZE)
   document.body.appendChild(renderer.domElement)
   document.querySelector('.buttons').remove()
@@ -47,6 +44,7 @@ function start(simulatorClass){
 
 </script>
 <style>
+canvas{width:512px !important;height:512px !important;}
 .start-button{
   display: inline-block;
   padding: 10px 40px;
