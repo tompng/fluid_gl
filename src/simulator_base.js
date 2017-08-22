@@ -21,7 +21,7 @@ class SimulatorBase {
         mult: new THREE.Mesh(this.planeGeometry, shaders.mult),
         add: new THREE.Mesh(this.planeGeometry, shaders.add)
       }
-      this.disturbScene.add(obj.mult,obj.add)
+      this.disturbScene.add(obj.mult, obj.add)
       obj.mult.visible = obj.add.visible = false
       this.disturbObjects.push(obj)
     }
@@ -76,11 +76,11 @@ class SimulatorBase {
     if(!this.disturbScene)this._initDisturb()
     let obj = this.disturbObjects[this.disturbIndex++]
     if(!obj)return
-    obj.mult.material.uniforms.center.value=obj.add.material.uniforms.center.value=new THREE.Vector4(2*position.x-1, 2*position.y-1)
-    obj.mult.material.uniforms.radius.value=obj.add.material.uniforms.radius.value=2*r
-    obj.mult.material.uniforms.value.value=mult
-    obj.add.material.uniforms.value.value=add
-    obj.mult.visible=obj.add.visible=true
+    obj.mult.material.uniforms.center.value = obj.add.material.uniforms.center.value = new THREE.Vector4(2*position.x-1, 2*position.y-1)
+    obj.mult.material.uniforms.radius.value = obj.add.material.uniforms.radius.value = 2*r
+    obj.mult.material.uniforms.value.value = mult
+    obj.add.material.uniforms.value.value = add
+    obj.mult.visible = obj.add.visible = true
   }
   _disturbApply(target){
     if(!this.disturbIndex)return
@@ -90,7 +90,7 @@ class SimulatorBase {
     this.renderer.autoClear = autoClearWas
     for(let i=0;i<this.disturbIndex;i++){
       let obj = this.disturbObjects[i]
-      obj.add.visible = obj.mult.visible = false
+      obj.mult.visible = obj.add.visible = false
     }
     this.disturbIndex = 0
   }
@@ -175,7 +175,9 @@ SimulatorBase.waveMultShader = new THREE.ShaderMaterial({
   fragmentShader: waveDisturbFragmentCode,
   transparent: true,
   depthTest: false,
-  blending: THREE.MultiplyBlending,
+  blending: THREE.CustomBlending,
+  blendSrc: THREE.ZeroFactor,
+  blendDst: THREE.SrcColorFactor
 })
 SimulatorBase.waveAddShader = new THREE.ShaderMaterial({
   uniforms: { value: { type: 'v4' } },
@@ -222,7 +224,9 @@ function disturbCircleShaders(){
       fragmentShader: fragment.replace('FRAGCOLOR', '1.0-alpha*(1.0-value)'),
       transparent: true,
       depthTest: false,
-      blending: THREE.MultiplyBlending,
+      blending: THREE.CustomBlending,
+      blendSrc: THREE.ZeroFactor,
+      blendDst: THREE.SrcColorFactor
     }),
     add: new THREE.ShaderMaterial({
       uniforms: uniforms(),
