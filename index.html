@@ -1,0 +1,66 @@
+<script src="bundle.js"></script>
+<script>
+var SIZE=256
+
+function start(simulatorClass){
+  renderer = new THREE.WebGLRenderer()
+  renderer.setSize(SIZE,SIZE)
+  document.body.appendChild(renderer.domElement)
+  document.querySelector('.buttons').remove()
+
+  var mouse = {x:0,y:0,down:false}
+  document.onmousedown=function(){mouse.down=true}
+  document.onmouseup=function(){mouse.down=false}
+  document.onmousemove=function(e){
+    mouse.x = (e.pageX)/512
+    mouse.y = 1-(e.pageY)/512
+  }
+  simulator = new simulatorClass(renderer, SIZE)
+  var mouseWas={x:0,y:0}
+  animate()
+  function animate(){
+    var now = performance.now()
+    simulator.disturb(
+      0.5, 0.5,
+      { vx: 0.4*Math.cos(now/1100), vy: 0.4*Math.sin(now/1200), a: 0.1+0.1*Math.cos(now/400), b: 0.1+0.1*Math.cos(now/2000)}
+    )
+    simulator.disturb(
+      mouse.x, mouse.y,
+      { vx: 16*(mouse.x-mouseWas.x), vy: 16*(mouse.y-mouseWas.y), a: mouse.down ? 1 : 0, b: mouse.down ? 0 : 1 }
+    )
+    mouseWas = {x: mouse.x, y: mouse.y}
+    for(var i=0;i<4;i++)simulator.calc()
+    if(mouse.down){
+      simulator.read(mouse.x, mouse.y, function(val){
+        document.querySelector('div').innerHTML=JSON.stringify(val).split(',').join('<br>')
+      })
+    }else{
+      document.querySelector('div').innerHTML=''
+    }
+    FluidGL.show(renderer, simulator.wave)
+    requestAnimationFrame(animate);
+  }
+}
+
+</script>
+<style>
+canvas{width:512px !important;height:512px !important;}
+.start-button{
+  display: inline-block;
+  padding: 10px 40px;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0.5;
+  border: 1px solid silver;
+  margin: 10px;
+}
+.start-button:hover{opacity: 0.8;}
+.start-button:active{opacity: 1;}
+canvas{cursor: pointer;position:absolute;left:0;top:0;}
+</style>
+<div style='color:white;position:fixed;text-align:left;z-index:1'></div>
+<div class='buttons'>
+  <div onclick='start(FluidGL.WaveSimulator)' class='start-button'>WaveSimulator</div>
+  <div onclick='start(FluidGL.FluidSimulator)' class='start-button'>FluidSimulator</div>
+</div>
