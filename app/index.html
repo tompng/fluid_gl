@@ -93,7 +93,14 @@ function start(simulatorClass){
         b: 1-p.val
       })
     }
-    for(var i=0;i<4;i++)simulator.calc();
+
+    for(var i=0;i<4;i++)simulator.calc()
+    simulator.storePixel('p1', mouse.x, mouse.y)
+    simulator.storeDone()
+    simulator.storeLoad()
+    pix = simulator.readStoredPixel('p1')
+    if(pix)
+    document.querySelector('div').innerHTML=[pix.vx,pix.vy,pix.h,pix.a,pix.b].map((a)=>(a||0).toFixed(8)).join("<br>")
     plane.material.uniforms.wave.value = simulator.wave.texture
     renderer.render(scene, camera);
     requestAnimationFrame(animate);
@@ -138,6 +145,7 @@ function smokeShader(){
 .start-button:active{opacity: 1;}
 canvas{cursor: pointer;}
 </style>
+<div style='color:white;position:fixed;text-align:left;'></div>
 <div class='buttons'>
   <div onclick='start(WaveSimulator)' class='start-button'>WaveSimulator</div>
   <div onclick='start(FluidSimulator)' class='start-button'>FluidSimulator</div>

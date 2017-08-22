@@ -30,7 +30,7 @@ class SimulatorBase {
     let maxStore = 128
     let store = {
       target: SimulatorBase.createRenderTarget(1,maxStore,{filter:THREE.NearestFilter}),
-      array: new Uint8Array(maxStore*4),
+      array: new Float32Array(maxStore*4),
       positions: {},
       scene: new THREE.Scene(),
       shader: SimulatorBase.storeShader(),
@@ -65,16 +65,14 @@ class SimulatorBase {
     let gl = this.renderer.getContext()
     let store = this.store
     if(store.index){
-      gl.bindFramebuffer(gl.FRAMEBUFFER, this.store.target.__webglFramebuffer, true)
-      gl.bindFramebuffer(gl.FRAMEBUFFER,this.store.target.__webglFramebuffer,true)
-      gl.readPixels(0, 0, 1, this.store.index, gl.RGBA, gl.UNSIGNED_BYTE, this.store.array)
+      this.renderer.readRenderTargetPixels(this.store.target, 0, 0, 1, this.store.index, this.store.array)
     }
     store.meshes.forEach((m)=>{m.visible=false})
     store.captured = {}
     for(let id in store.positions){
       let index = store.positions[id]
       let arr=[]
-      for(let i=0; i<4; i++)arr[i]=store.array[4*index+i]/0xff
+      for(let i=0; i<4; i++)arr[i]=store.array[4*index+i]
       store.captured[id] = this._storeConvert(arr)
     }
     store.index = 0
@@ -89,11 +87,11 @@ class SimulatorBase {
   storePixel(id,x,y){
     let store = this.store
     if(store.index==store.max)return
-    if(x<0||x>=size||y<0||y>=size)return
+    if(x<0||x>=1||y<0||y>=1)return
     store.positions[id]=store.index
     let mesh = store.meshes[store.index]
-    mesh.position.x = x/size
-    mesh.position.y = y/size
+    mesh.position.x = x
+    mesh.position.y = y
     mesh.position.z = store.index/store.max
     mesh.visible = true
     store.index++
