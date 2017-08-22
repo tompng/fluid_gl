@@ -30,7 +30,7 @@ class FluidSimulator extends SimulatorBase {
     let a = option.a || 0
     let b = option.b || 0
     let mult = new THREE.Vector4(vmult, vmult, amult, bmult)
-    let add = new THREE.Vector4(-vx*(1-vmult), -vy*(1-vmult), a*(1-amult), b*(1-bmult))
+    let add = new THREE.Vector4(vx*(1-vmult), vy*(1-vmult), a*(1-amult), b*(1-bmult))
     super.disturb(position, option.r || 0.05, mult, add)
   }
   calc(){
@@ -95,7 +95,7 @@ FluidSimulator.advectionShader = function(size){
     uniform sampler2D wave;
     void main(){
       vec2 coord = gl_FragCoord.xy/SIZE;
-      coord = coord + texture2D(wave,coord).xy/SIZE;
+      coord = coord - texture2D(wave,coord).xy/SIZE;
       gl_FragColor = texture2D(wave, coord)*0.9999;
     }
     `

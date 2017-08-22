@@ -30,7 +30,7 @@ class WaveSimulator extends SimulatorBase {
     var h = option.h || 0
     var a = option.a || 0
     let mult = new THREE.Vector4(vmult, vmult, hmult, amult)
-    let add = new THREE.Vector4(-vx*(1-vmult), -vy*(1-vmult), h*(1-hmult), a*(1-amult))
+    let add = new THREE.Vector4(vx*(1-vmult), vy*(1-vmult), h*(1-hmult), a*(1-amult))
     super.disturb(position, option.r || 0.05, mult, add)
   }
   calc(){
@@ -69,7 +69,7 @@ WaveSimulator.waveShader = function(size){
     const vec2 dy = vec2(0, 1.0/SIZE);
     void main(){
       vec2 coord = gl_FragCoord.xy/SIZE;
-      coord = coord + texture2D(wave,coord).xy/SIZE;
+      coord = coord - texture2D(wave,coord).xy/SIZE;
       vec4 uvh = texture2D(wave, coord);
       vec4 uvhx0 = texture2D(wave,coord-dx), uvhx1 = texture2D(wave,coord+dx);
       vec4 uvhy0 = texture2D(wave,coord-dy), uvhy1 = texture2D(wave,coord+dy);
