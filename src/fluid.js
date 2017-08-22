@@ -43,7 +43,7 @@ class FluidSimulator extends SimulatorBase {
       this.pressuredVelocityShader,
       { wave: this.wavetmp.texture, pressure: this.pressure.texture }
     )
-    this._storeExecute()
+    this._storeExecute(this.wave)
     this._storeRead()
   }
   _storeConvert(r, g, b, a){

@@ -29,23 +29,17 @@ class SimulatorBase {
   _initStore(size){
     let maxStore = 128
     let store = {
-      target: SimulatorBase.createRenderTarget(1,maxStore,{filter:THREE.NearestFilter}),
+      target: SimulatorBase.createRenderTarget(maxStore, 1, { filter: THREE.NearestFilter }),
       array: new Float32Array(maxStore*4),
       callbacks: [],
       scene: new THREE.Scene(),
       shader: SimulatorBase.storeShader(),
-      meshes: [],
+      geometry: new THREE.Geometry(),
       index: 0,
       max: maxStore
     }
-    store.shader.uniforms.size.value = size
-    store.shader.uniforms.height.value = maxStore
-    for(let i=0; i<maxStore; i++){
-      let smesh = new THREE.Mesh(new THREE.PlaneBufferGeometry(2, 2))
-      smesh.material = store.shader
-      store.meshes.push(smesh)
-      store.scene.add(smesh)
-    }
+    let points = new THREE.Points(store.geometry, store.shader)
+    store.scene.add(points)
     this.store = store
   }
   static createRenderTarget(w, h, option){
@@ -61,28 +55,25 @@ class SimulatorBase {
       depthBuffer: false
     })
   }
-  read(x,y,cb){
+  read(x, y, cb){
     let store = this.store
     if(store.index == store.max)return
     store.callbacks[store.index]=cb
-    let mesh = store.meshes[store.index]
-    mesh.position.x = (x%1+1)%1
-    mesh.position.y = (y%1+1)%1
-    mesh.position.z = store.index/store.max
-    mesh.visible = true
+    store.geometry.vertices.push(new THREE.Vector3(x,y, store.index/store.max))
+    store.geometry.verticesNeedUpdate = true
     store.index++
   }
   _storeRead(){
     let store = this.store
     if(!store.index)return
-    this.renderer.readRenderTargetPixels(this.store.target, 0, 0, 1, this.store.index, this.store.array)
-    store.meshes.forEach((m)=>{m.visible=false})
+    this.renderer.readRenderTargetPixels(store.target, 0, 0, store.index, 1, store.array)
     let array = store.array
     store.callbacks.forEach((cb, i)=>{
       let index = 4*i
-      cb(this._storeConvert(array[4*i], array[4*i+1], array[4*i+2], array[4*i+3]))
+      if(cb)cb(this._storeConvert(array[4*i], array[4*i+1], array[4*i+2], array[4*i+3]))
     })
     store.index = 0
+    store.geometry.vertices = []
     store.callbacks = []
   }
   _storeConvert(r, g, b, a){
@@ -90,7 +81,7 @@ class SimulatorBase {
   }
   _storeExecute(target){
     if(this.store.index == 0)return
-    this.store.shader.uniforms.texture.value = this.wave.texture
+    this.store.shader.uniforms.texture.value = target.texture
     this.renderer.render(this.store.scene, this.camera, this.store.target)
   }
   disturb(position, r, mult, add){
@@ -145,30 +136,20 @@ class SimulatorBase {
 
 SimulatorBase.storeShader = function(){
   let VERT = `
-  uniform float size, height;
   varying vec2 vsrc;
   void main(){
-    vec4 xyiw = modelMatrix*vec4(0,0,0,1);
-    vsrc=xyiw.xy+position.xy/size;
-    gl_Position=vec4(
-      position.x,
-      2.0*xyiw.z-1.0+(position.y+1.0)/height,
-      0,
-      1
-    );
+    vsrc = position.xy;
+    gl_Position=vec4(2.0*position.z-1.0, 0, 0, 1);
+    gl_PointSize = 1.0;
   }
   `
   let FRAG = `
   uniform sampler2D texture;
   varying vec2 vsrc;
-  void main(){gl_FragColor=texture2D(texture,vsrc);}
+  void main(){gl_FragColor=texture2D(texture, vsrc);}
   `
   return SimulatorBase.generateCalcShader({
-    uniforms: {
-      texture: {type: "t"},
-      size: {type: 'f'},
-      height: {type: 'f'},
-    },
+    uniforms: { texture: { type: 't' } },
     vertex: VERT,
     fragment: FRAG
   })

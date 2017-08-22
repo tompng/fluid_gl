@@ -40,7 +40,7 @@ class WaveSimulator extends SimulatorBase {
     this.wave1 = this.wave;
     this._render(this.wave1, this.waveShader, { wave: this.wave0.texture })
     if(this.normalShader)this._calcNormal()
-    this._storeExecute()
+    this._storeExecute(this.wave)
     this._storeRead()
   }
   _storeConvert(r, g, b, a){
