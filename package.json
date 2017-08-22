@@ -3,12 +3,12 @@
   "version": "0.0.1",
   "main": "index.js",
   "dependencies": {
+    "poisson_gl" : "git://github.com/tompng/poisson_gl.git",
     "three": "^0.86.0"
   },
   "devDependencies": {
     "webpack": "3.5.5",
     "http-server": "0.10.0",
-    "poisson_gl" : "git://github.com/tompng/poisson_gl.git",
     "concurrently": "3.5.0"
   },
   "scripts": {
