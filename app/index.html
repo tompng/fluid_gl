@@ -1,151 +1,67 @@
-<title>leapmotion smoke</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <script src="bundle.js"></script>
 <style>
-body{padding:0;margin:0;text-align:center;background:black;}
-canvas{width:100vmin !important;height:100vmin !important;}
+  canvas{width:512px !important;height:512px !important;}
 </style>
 <script>
-var THREE = FluidGL.THREE
-var SIZE=256;
-var pointables=[],hands=[];
-function leapInit(){
-  ws = new WebSocket("wss://127.0.0.1:6436/v4.json");
-  ws.onerror=function(){
-    ws2 = new WebSocket("ws://127.0.0.1:6437/v4.json");
-    ws2.onopen=ws.onopen;
-    ws2.onmessage=ws.onmessage;
-    ws2.onerror=function(){
-      alert('unable to connect to leapmotion');
-    }
-  }
-  ws.onopen = function(event){this.send(JSON.stringify({background: true, enableGestures: true}));};
-  ws.onmessage = function(event){
-    var obj = JSON.parse(event.data);
-    if(obj.id){
-      hands=obj.hands;
-      pointables=obj.pointables;
-    }
-  };
-}
+var SIZE=256
 
 function start(simulatorClass){
+  renderer = new FluidGL.THREE.WebGLRenderer()
+  renderer.setSize(SIZE,SIZE)
+  document.body.appendChild(renderer.domElement)
   document.querySelector('.buttons').remove()
-  leapInit();
-  var planeGeometry = new THREE.PlaneBufferGeometry(2,2);
-  camera = new THREE.Camera();
-  scene = new THREE.Scene();
-  plane = new THREE.Mesh(planeGeometry, smokeShader());
-  scene.add(plane);
 
-  renderer = new THREE.WebGLRenderer();
-  renderer.setClearColor(new THREE.Color(0x0000ff));
-  renderer.setSize(SIZE,SIZE);
-  document.body.appendChild(renderer.domElement);
-
-  var mouse = {x:-1,y:-1,vx:0,vy:0,val:0};
-  document.body.addEventListener('touchstart', function(e){e.preventDefault();return false});
-  document.body.addEventListener('touchmove', function(e){
-    var touch = e.touches[0];
-    mouse.down=true;
-    document.onmousemove({
-      pageX: touch.pageX,
-      pageY: touch.pageY,
-    });
-    return false;
-  })
-
-  document.onmousedown=function(){mouse.down=true;}
-  document.onmouseup=function(){mouse.down=false;}
+  var mouse = {x:0,y:0,down:false}
+  document.onmousedown=function(){mouse.down=true}
+  document.onmouseup=function(){mouse.down=false}
   document.onmousemove=function(e){
-    if(mouse.timer)clearTimeout(mouse.timer);
-    var w=innerWidth,h=innerHeight;
-    var s=Math.min(w,h);
-    var x = (e.pageX-(w-s)/2)/s;
-    var y = 1-(e.pageY-(h-s)/2)/s;
-    var vx=x-mouse.x,vy=y-mouse.y;
-    var vr=Math.sqrt(vx*vx+vy*vy);
-    if(vr>0.1){vx*=0.1/vr;vy*=0.1/vr;}
-    mouse = {x: x, y: y, vx: vx, vy: vy, down: mouse.down};
-    mouse.val = mouse.down?1:0;
-    mouse.timer = setTimeout(function(){mouse.vx=mouse.vy=mouse.val=0;mouse.timer=null},40);
+    mouse.x = (e.pageX)/512
+    mouse.y = 1-(e.pageY)/512
   }
-  simulator = new simulatorClass(renderer, SIZE);
-  animate();
+  simulator = new simulatorClass(renderer, SIZE)
+  var mouseWas={x:0,y:0}
+  animate()
   function animate(){
-    var ps=[];if(mouse)ps.push(mouse);
-    pointables.forEach(function(p){
-      var data={
-        x: 0.5+p.tipPosition[0]/400,
-        y: 0.5+(p.tipPosition[1]-250)/400,
-        vx: p.tipVelocity[0]/10000*4,
-        vy: p.tipVelocity[1]/10000*4,
-        val: p.tipPosition[2]<0?1:0
-      }
-      if(p.tool){data.vx*=0.25;data.vy*=0.25;}
-      ps.push(data);
-    })
-    for(var i in ps){
-      var p = ps[i]
-      simulator.disturb({x: p.x, y: p.y}, {
-        vx: 16*p.vx,
-        vy: 16*p.vy,
-        a: p.val,
-        b: 1-p.val
-      })
-    }
-
+    var now = performance.now()
+    simulator.disturb(
+      { x: 0.5, y: 0.5 },
+      { vx: 0.4*Math.cos(now/1100), vy: 0.4*Math.sin(now/1200), a: 0.1+0.1*Math.cos(now/400), b: 0.1+0.1*Math.cos(now/2000)}
+    )
+    simulator.disturb(
+      { x: mouse.x, y: mouse.y },
+      { vx: 16*(mouse.x-mouseWas.x), vy: 16*(mouse.y-mouseWas.y), a: mouse.down ? 1 : 0, b: mouse.down ? 0 : 1 }
+    )
+    mouseWas = {x: mouse.x, y: mouse.y}
     for(var i=0;i<4;i++)simulator.calc()
-    simulator.read(mouse.x, mouse.y, (val)=>{
-      document.querySelector('div').innerHTML=Object.keys(val).map((key)=>{
-        return key + ': ' + val[key].toFixed(4)
-      }).join("<br>")
-    })
-    plane.material.uniforms.wave.value = simulator.wave.texture
-    renderer.render(scene, camera);
+    if(mouse.down){
+      simulator.read(mouse.x, mouse.y, function(val){
+        document.querySelector('div').innerHTML=JSON.stringify(val).split(',').join('<br>')
+      })
+    }else{
+      document.querySelector('div').innerHTML=''
+    }
+    FluidGL.show(renderer, simulator.wave)
     requestAnimationFrame(animate);
   }
 }
 
-function smokeShader(){
-  let VERT = `
-  varying vec2 coord;
-  void main(){
-    coord=position.xy/2.0+vec2(0.5,0.5);
-    gl_Position=vec4(position,1);
-  }
-  `
-  let FRAG = `
-  varying vec2 coord;
-  uniform sampler2D wave;
-  void main(){
-    vec4 uvha=texture2D(wave,coord);
-    gl_FragColor.rgb = uvha.a*vec3(8,4,2) + uvha.z*vec3(4,0,0);
-    gl_FragColor.a = 1.0;
-  }
-  `
-  return new THREE.ShaderMaterial({
-    uniforms: {wave: {type: "t"}},
-    vertexShader: VERT,
-    fragmentShader: FRAG,
-  });
-}
 </script>
 <style>
 .start-button{
   display: inline-block;
-  padding: 10px 80px;
+  padding: 10px 40px;
   background: white;
   border-radius: 4px;
   cursor: pointer;
   opacity: 0.5;
+  border: 1px solid silver;
   margin: 10px;
 }
 .start-button:hover{opacity: 0.8;}
 .start-button:active{opacity: 1;}
-canvas{cursor: pointer;}
+canvas{cursor: pointer;position:absolute;left:0;top:0;}
 </style>
-<div style='color:white;position:fixed;text-align:left;'></div>
+<div style='color:white;position:fixed;text-align:left;z-index:1'></div>
 <div class='buttons'>
   <div onclick='start(FluidGL.WaveSimulator)' class='start-button'>WaveSimulator</div>
   <div onclick='start(FluidGL.FluidSimulator)' class='start-button'>FluidSimulator</div>
