@@ -94,10 +94,17 @@ FluidSimulator.advectionShader = function(size){
     uniforms: { wave: { type: 't' } },
     fragment: `
     uniform sampler2D wave;
+    const vec2 dx = vec2(0.25/SIZE, 0);
+    const vec2 dy = vec2(0, 0.25/SIZE);
     void main(){
       vec2 coord = gl_FragCoord.xy/SIZE;
       coord = coord - texture2D(wave,coord).xy/SIZE;
-      gl_FragColor = texture2D(wave, coord)*0.9999;
+      gl_FragColor = 0.2499*(
+        +texture2D(wave, coord-dx)
+        +texture2D(wave, coord+dx)
+        +texture2D(wave, coord-dy)
+        +texture2D(wave, coord+dy)
+      );
     }
     `
   })
