@@ -51,19 +51,16 @@ class WaveSimulator extends SimulatorBase {
     return { vx: r, vy: g, h: b, a: a }
   }
   _calcNormal(){
-    mesh.material = normalShader;
-    normalShader.uniforms.wave.value = wave1.texture || wave1;
+    mesh.material = normalShader
+    normalShader.uniforms.wave.value = wave1.texture || wave1
     let uniforms = { wave: this.wave.texture }
     if(this.pattern){
-      uniforms.time = performance.now()/1000;
+      uniforms.time = performance.now()/1000
       uniforms.pattern = this.pattern.texture || this.pattern
     }
     this._render(this.normal, this.normalShader, uniforms)
   }
 }
-
-WaveSimulator.vertexShaderCode = 'void main(){gl_Position=vec4(position,1);}';
-
 
 WaveSimulator.waveShader = function(size){
   return SimulatorBase.generateCalcShader({
