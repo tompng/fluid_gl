@@ -14,6 +14,10 @@ class WaveSimulator extends SimulatorBase {
       this.normalShader = WaveSimulator.normalShader(size, this.pattern)
     }
     this.waveShader = WaveSimulator.waveShader(size)
+    let defaultDecay = 0.9999
+    this.vDecay = option.vDecay || defaultDecay
+    this.hDecay = option.hDecay || defaultDecay
+    this.aDecay = option.aDecay || defaultDecay
   }
   clear(){
     this._clearTarget(this.wave0)
@@ -34,10 +38,11 @@ class WaveSimulator extends SimulatorBase {
   }
   calc(){
     this._disturbApply(this.wave)
-    this.wave = this.wave0;
-    this.wave0 = this.wave1;
-    this.wave1 = this.wave;
-    this._render(this.wave1, this.waveShader, { wave: this.wave0.texture })
+    let decay = new THREE.Vector4(this.vDecay, this.vDecay, this.hDecay, this.aDecay)
+    this.wave = this.wave0
+    this.wave0 = this.wave1
+    this.wave1 = this.wave
+    this._render(this.wave1, this.waveShader, { wave: this.wave0.texture, decay: decay })
     if(this.normalShader)this._calcNormal()
     this._storeExecute(this.wave)
     this._storeRead()
@@ -63,9 +68,10 @@ WaveSimulator.vertexShaderCode = 'void main(){gl_Position=vec4(position,1);}';
 WaveSimulator.waveShader = function(size){
   return SimulatorBase.generateCalcShader({
     size: size,
-    uniforms: { wave: { type: 't' } },
+    uniforms: { wave: { type: 't' }, decay: { type: 'v4' } },
     fragment: `
     uniform sampler2D wave;
+    uniform vec4 decay;
     const vec2 dx = vec2(1.0/SIZE, 0);
     const vec2 dy = vec2(0, 1.0/SIZE);
     void main(){
@@ -84,8 +90,7 @@ WaveSimulator.waveShader = function(size){
       vec4 av = (uvhx0+uvhx1+uvhy0+uvhy1)/4.0;
       vec4 outvec = 0.7*uvh+0.3*av + 0.2*diff;
       outvec.a = uvh.a;
-      gl_FragColor.xyz = clamp(outvec.xyz*0.9999, vec3(-1,-1,-1), vec3(1,1,1));
-      gl_FragColor.a = clamp(outvec.a*0.9999,0.0,1.0);
+      gl_FragColor = decay * outvec;
     }
     `
   })
