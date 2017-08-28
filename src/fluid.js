@@ -16,6 +16,10 @@ class FluidSimulator extends SimulatorBase {
     this.divShader = FluidSimulator.divShader(size)
     this.pressuredVelocityShader = FluidSimulator.pressuredVelocityShader(size)
     this.poissonSolver = new PoissonSolverGL(renderer, size)
+    let defaultDecay = 0.9999
+    this.vDecay = option.vDecay || defaultDecay
+    this.bDecay = option.bDecay || defaultDecay
+    this.aDecay = option.aDecay || defaultDecay
   }
   clear(){
     this._clearTarget(this.wave)
@@ -34,7 +38,8 @@ class FluidSimulator extends SimulatorBase {
   }
   calc(){
     this._disturbApply(this.wave)
-    this._render(this.wavetmp, this.advectionShader, { wave: this.wave.texture })
+    let decay = new THREE.Vector4(this.vDecay, this.vDecay, this.bDecay, this.aDecay)
+    this._render(this.wavetmp, this.advectionShader, { wave: this.wave.texture, decay: decay })
     this._render(this.divV, this.divShader, { wave: this.wavetmp.texture })
     this.poissonSolver.solve(this.divV, this.pressure)
     this._render(
@@ -91,15 +96,16 @@ FluidSimulator.pressuredVelocityShader = function(size){
 FluidSimulator.advectionShader = function(size){
   return SimulatorBase.generateCalcShader({
     size: size,
-    uniforms: { wave: { type: 't' } },
+    uniforms: { wave: { type: 't' }, decay: { type: 'v4' } },
     fragment: `
     uniform sampler2D wave;
+    uniform vec4 decay;
     const vec2 dx = vec2(0.25/SIZE, 0);
     const vec2 dy = vec2(0, 0.25/SIZE);
     void main(){
       vec2 coord = gl_FragCoord.xy/SIZE;
       coord = coord - texture2D(wave,coord).xy/SIZE;
-      gl_FragColor = 0.2499*(
+      gl_FragColor = 0.25*decay*(
         +texture2D(wave, coord-dx)
         +texture2D(wave, coord+dx)
         +texture2D(wave, coord-dy)
