@@ -28,8 +28,8 @@ class FluidSimulator extends SimulatorBase {
     let vy = option.vy || 0
     let a = option.a || 0
     let b = option.b || 0
-    let mult = new THREE.Vector4(vmult, vmult, amult, bmult)
-    let add = new THREE.Vector4(vx*(1-vmult), vy*(1-vmult), a*(1-amult), b*(1-bmult))
+    let mult = new THREE.Vector4(vmult, vmult, bmult, amult)
+    let add = new THREE.Vector4(vx*(1-vmult), vy*(1-vmult), b*(1-bmult), a*(1-amult))
     super.disturb(position, option.r || 0.05, mult, add)
   }
   calc(){
@@ -46,7 +46,7 @@ class FluidSimulator extends SimulatorBase {
     this._storeRead()
   }
   _storeConvert(r, g, b, a){
-    return { vx: r, vy: g, a: b, b: a }
+    return { vx: r, vy: g, b: b, a: a }
   }
 }
 
