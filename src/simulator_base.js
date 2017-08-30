@@ -26,14 +26,33 @@ class SimulatorBase {
       this.disturbObjects.push(obj)
     }
   }
+  _storeFloatReadTest(){
+    if(SimulatorBase._storeFloadReadTestResult !== undefined){
+      return SimulatorBase._storeFloadReadTestResult
+    }
+    let target = SimulatorBase.createRenderTarget(1, 1, { type: THREE.TypeFloat })
+    let clearColor = renderer.getClearColor()
+    renderer.setClearColor(new THREE.Color(1, 0, 0))
+    this.renderer.render(new THREE.Scene(), new THREE.Camera(), target)
+    let buf = new Float32Array(4)
+    this.renderer.readRenderTargetPixels(target, 0, 0, 1, 1, buf)
+    renderer.setClearColor(clearColor)
+    let diff = 0.01
+    SimulatorBase._storeFloadReadTestResult = 1-diff < buf[0] && buf[0] < 1+diff
+    return SimulatorBase._storeFloadReadTestResult
+  }
   _initStore(){
+    let fallback = !this._storeFloatReadTest()
+    let type = fallback ? THREE.UnsignedByteType : THREE.FloatType
+    let arrayClass = fallback ? Uint8Array : Float32Array
     let maxStore = 256
     let store = {
-      target: SimulatorBase.createRenderTarget(maxStore, 1, { filter: THREE.NearestFilter }),
-      array: new Float32Array(maxStore*4),
+      fallback: fallback,
+      target: SimulatorBase.createRenderTarget(maxStore, 1, { type: type }),
+      array: new arrayClass(maxStore*4),
       callbacks: [],
       scene: new THREE.Scene(),
-      shader: SimulatorBase.storeShader(),
+      shader: SimulatorBase.storeShader(fallback),
       geometry: new THREE.Geometry(),
       index: 0,
       max: maxStore
@@ -56,9 +75,10 @@ class SimulatorBase {
     if(!store || !store.index)return
     this.renderer.readRenderTargetPixels(store.target, 0, 0, store.index, 1, store.array)
     let array = store.array
+    let conv = store.fallback ? v=>v==0xff?1:(v-0x7f)/0x7f : v=>v
     store.callbacks.forEach((cb, i)=>{
       let index = 4*i
-      if(cb)cb(this._storeConvert(array[4*i], array[4*i+1], array[4*i+2], array[4*i+3]))
+      if(cb)cb(this._storeConvert(conv(array[index]), conv(array[index+1]), conv(array[index+2]), conv(array[index+3])))
     })
     store.index = 0
     store.geometry.vertices = []
@@ -136,7 +156,7 @@ class SimulatorBase {
   }
 }
 
-SimulatorBase.storeShader = function(){
+SimulatorBase.storeShader = function(fallback){
   let VERT = `
   varying vec2 vsrc;
   void main(){
@@ -145,10 +165,14 @@ SimulatorBase.storeShader = function(){
     gl_PointSize = 1.0;
   }
   `
+  function colorFunc(v){
+    if(!fallback)return v
+    return `(${v}+1.0)*${0x7f/0xff}`
+  }
   let FRAG = `
   uniform sampler2D texture;
   varying vec2 vsrc;
-  void main(){gl_FragColor=texture2D(texture, vsrc);}
+  void main(){gl_FragColor=${colorFunc('texture2D(texture, vsrc)')};}
   `
   return SimulatorBase.generateCalcShader({
     uniforms: { texture: { type: 't' } },
