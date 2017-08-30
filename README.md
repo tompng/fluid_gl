@@ -11,7 +11,8 @@ https://tompng.github.io/fluid_gl/
 }
 ```
 
-## app https://tompng.github.io/fluid_gl/sample.html
+## app
+https://tompng.github.io/fluid_gl/sample.html
 ```js
 let THREE = require('three')
 let FluidGL = require('fluid_gl')
