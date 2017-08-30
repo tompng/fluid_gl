@@ -11,7 +11,7 @@ https://tompng.github.io/fluid_gl/
 }
 ```
 
-## app
+## app https://tompng.github.io/fluid_gl/sample.html
 ```js
 let THREE = require('three')
 let FluidGL = require('fluid_gl')
@@ -19,7 +19,6 @@ let renderer = new THREE.WebGLRenderer()
 renderer.setSize(256, 256)
 document.body.appendChild(renderer.domElement)
 let simulator = new FluidGL.FluidSimulator(renderer, 256)
-
 function animate(){
   let time = performance.now()/1000
   simulator.disturb(

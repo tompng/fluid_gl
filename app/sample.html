@@ -1,0 +1,20 @@
+<script src="bundle.js"></script>
+<script>
+window.onload = function(){
+  let renderer = new THREE.WebGLRenderer()
+  renderer.setSize(256, 256)
+  document.body.appendChild(renderer.domElement)
+  let simulator = new FluidGL.FluidSimulator(renderer, 256)
+  function animate(){
+    let time = performance.now()/1000
+    simulator.disturb(
+      { x: 0.5, y: 0.5 },
+      { vx: 2*Math.cos(time), vy: 2*Math.sin(time), a: 1, b: 0.5+0.5*Math.sin(time/3) }
+    )
+    simulator.calc()
+    FluidGL.show(renderer, simulator.wave)
+    requestAnimationFrame(animate)
+  }
+  animate()
+}
+</script>
