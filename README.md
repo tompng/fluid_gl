@@ -11,7 +11,7 @@ https://tompng.github.io/fluid_gl/
 }
 ```
 
-## app
+## sample
 https://tompng.github.io/fluid_gl/sample.html
 ```js
 let THREE = require('three')
@@ -23,7 +23,7 @@ let simulator = new FluidGL.FluidSimulator(renderer, 256)
 function animate(){
   let time = performance.now()/1000
   simulator.disturb(
-    { x: 0.5, y: 0.5 },
+    0.5, 0.5,
     { vx: 2*Math.cos(time), vy: 2*Math.sin(time), a: 1, b: 0.5+0.5*Math.sin(time/3) }
   )
   simulator.calc()

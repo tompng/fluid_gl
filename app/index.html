@@ -21,11 +21,11 @@ function start(simulatorClass){
   function animate(){
     var now = performance.now()
     simulator.disturb(
-      { x: 0.5, y: 0.5 },
+      0.5, 0.5,
       { vx: 0.4*Math.cos(now/1100), vy: 0.4*Math.sin(now/1200), a: 0.1+0.1*Math.cos(now/400), b: 0.1+0.1*Math.cos(now/2000)}
     )
     simulator.disturb(
-      { x: mouse.x, y: mouse.y },
+      mouse.x, mouse.y,
       { vx: 16*(mouse.x-mouseWas.x), vy: 16*(mouse.y-mouseWas.y), a: mouse.down ? 1 : 0, b: mouse.down ? 0 : 1 }
     )
     mouseWas = {x: mouse.x, y: mouse.y}
