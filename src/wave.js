@@ -15,9 +15,9 @@ class WaveSimulator extends SimulatorBase {
     }
     this.waveShader = WaveSimulator.waveShader(size)
     let defaultDecay = 0.9999
-    this.vDecay = option.vDecay || defaultDecay
-    this.hDecay = option.hDecay || defaultDecay
-    this.aDecay = option.aDecay || defaultDecay
+    this.vDecay = option.vDecay || option.decay || defaultDecay
+    this.hDecay = option.hDecay || option.decay || defaultDecay
+    this.aDecay = option.aDecay || option.decay || defaultDecay
   }
   clear(){
     this._clearTarget(this.wave0)
@@ -28,12 +28,15 @@ class WaveSimulator extends SimulatorBase {
     let vmult = option.vmult || 0
     let hmult = option.hmult || 1
     let amult = option.amult || 0.95
+    let vadd = option.vadd || 1-vmult
+    let hadd = option.hadd || 1-hmult
+    let aadd = option.aadd || 1-amult
     let vx = option.vx || 0
     let vy = option.vy || 0
     let h = option.h || 0
     let a = option.a || 0
     let mult = new THREE.Vector4(vmult, vmult, hmult, amult)
-    let add = new THREE.Vector4(vx*(1-vmult), vy*(1-vmult), h*(1-hmult), a*(1-amult))
+    let add = new THREE.Vector4(vx*vadd, vy*vadd, h*hadd, a*aadd)
     super.disturb(position, option.r || 0.05, mult, add)
   }
   calc(){

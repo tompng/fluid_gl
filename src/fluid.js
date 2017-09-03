@@ -17,23 +17,26 @@ class FluidSimulator extends SimulatorBase {
     this.pressuredVelocityShader = FluidSimulator.pressuredVelocityShader(size)
     this.poissonSolver = new PoissonSolverGL(renderer, size)
     let defaultDecay = 0.9999
-    this.vDecay = option.vDecay || defaultDecay
-    this.bDecay = option.bDecay || defaultDecay
-    this.aDecay = option.aDecay || defaultDecay
+    this.vDecay = option.vDecay || option.decay || defaultDecay
+    this.bDecay = option.bDecay || option.decay || defaultDecay
+    this.aDecay = option.aDecay || option.decay || defaultDecay
   }
   clear(){
     this._clearTarget(this.wave)
   }
   disturb(position, option){
     let vmult = option.vmult || 0
-    let amult = option.amult || 0.95
     let bmult = option.bmult || 0.95
+    let amult = option.amult || 0.95
+    let vadd = option.vadd || 1-vmult
+    let badd = option.badd || 1-bmult
+    let aadd = option.aadd || 1-amult
     let vx = option.vx || 0
     let vy = option.vy || 0
     let a = option.a || 0
     let b = option.b || 0
     let mult = new THREE.Vector4(vmult, vmult, bmult, amult)
-    let add = new THREE.Vector4(vx*(1-vmult), vy*(1-vmult), b*(1-bmult), a*(1-amult))
+    let add = new THREE.Vector4(vx*vadd, vy*vadd, b*badd, a*aadd)
     super.disturb(position, option.r || 0.05, mult, add)
   }
   calc(){
