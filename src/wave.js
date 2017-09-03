@@ -8,6 +8,7 @@ class WaveSimulator extends SimulatorBase {
     super(renderer)
     this.wave0 = SimulatorBase.createRenderTarget(size, size)
     this.wave1 = SimulatorBase.createRenderTarget(size, size)
+    this.wave = this.wave0
     if(option.generateNormal){
       this.pattern = option.pattern
       this.normal = SimulatorBase.createRenderTarget(size, size)
