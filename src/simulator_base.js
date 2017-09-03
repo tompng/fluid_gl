@@ -92,11 +92,11 @@ class SimulatorBase {
     this.store.shader.uniforms.texture.value = target.texture
     this.renderer.render(this.store.scene, this.camera, this.store.target)
   }
-  disturb(position, r, mult, add){
+  disturb(x, y, r, mult, add){
     if(!this.disturbScene)this._initDisturb()
     let obj = this.disturbObjects[this.disturbIndex++]
     if(!obj)return
-    obj.mult.material.uniforms.center.value = obj.add.material.uniforms.center.value = new THREE.Vector4(2*position.x-1, 2*position.y-1)
+    obj.mult.material.uniforms.center.value = obj.add.material.uniforms.center.value = new THREE.Vector4(2*x-1, 2*y-1)
     obj.mult.material.uniforms.radius.value = obj.add.material.uniforms.radius.value = 2*r
     obj.mult.material.uniforms.value.value = mult
     obj.add.material.uniforms.value.value = add

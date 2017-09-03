@@ -24,7 +24,7 @@ class WaveSimulator extends SimulatorBase {
     this._clearTarget(this.wave1)
     if(this.normalShader)this._clearTarget(this.normalShader)
   }
-  disturb(position, option){
+  disturb(x, y, option){
     let vmult = option.vmult || 0
     let hmult = option.hmult || 1
     let amult = option.amult || 0.95
@@ -37,7 +37,7 @@ class WaveSimulator extends SimulatorBase {
     let a = option.a || 0
     let mult = new THREE.Vector4(vmult, vmult, hmult, amult)
     let add = new THREE.Vector4(vx*vadd, vy*vadd, h*hadd, a*aadd)
-    super.disturb(position, option.r || 0.05, mult, add)
+    super.disturb(x, y, option.r || 0.05, mult, add)
   }
   calc(){
     this._disturbApply(this.wave)

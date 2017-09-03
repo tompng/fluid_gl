@@ -24,7 +24,7 @@ class FluidSimulator extends SimulatorBase {
   clear(){
     this._clearTarget(this.wave)
   }
-  disturb(position, option){
+  disturb(x, y, option){
     let vmult = option.vmult || 0
     let bmult = option.bmult || 0.95
     let amult = option.amult || 0.95
@@ -37,7 +37,7 @@ class FluidSimulator extends SimulatorBase {
     let b = option.b || 0
     let mult = new THREE.Vector4(vmult, vmult, bmult, amult)
     let add = new THREE.Vector4(vx*vadd, vy*vadd, b*badd, a*aadd)
-    super.disturb(position, option.r || 0.05, mult, add)
+    super.disturb(x, y, option.r || 0.05, mult, add)
   }
   calc(){
     this._disturbApply(this.wave)
